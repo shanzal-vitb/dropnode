@@ -1,0 +1,92 @@
+name: Deploy DropNode
+
+on:
+  push:
+    branches:
+      - main          # trigger on every push to main
+  workflow_dispatch:  # allow manual trigger from GitHub Actions UI
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout source ────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Set up Python ──────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ── 3. Create & populate virtual environment ──────────────────────────────
+      - name: Create virtual environment
+        run: python -m venv .venv
+
+      - name: Install dependencies
+        run: |
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install flask werkzeug requests
+
+      # ── 4. Verify app imports cleanly (smoke test) ────────────────────────────
+      - name: Smoke-test app import
+        run: |
+          .venv/bin/python -c "import app; print('app.py imports OK')"
+        env:
+          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+
+      # ── 5. Copy files to server via SSH ───────────────────────────────────────
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host:     ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key:      ${{ secrets.SSH_PRIVATE_KEY }}
+          port:     ${{ secrets.SSH_PORT }}
+          source:   "app.py,index.html"   # only the two app files — no .venv (rebuilt on server)
+          target:   ${{ secrets.DEPLOY_PATH }}
+
+      # ── 6. SSH into server: rebuild venv & restart app ────────────────────────
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key:      ${{ secrets.SSH_PRIVATE_KEY }}
+          port:     ${{ secrets.SSH_PORT }}
+          script: |
+            set -e
+            cd ${{ secrets.DEPLOY_PATH }}
+
+            # ── Create folders if first deploy ──
+            mkdir -p cache uploads
+
+            # ── Rebuild venv on the server ──
+            python3 -m venv .venv
+            .venv/bin/pip install --upgrade pip --quiet
+            .venv/bin/pip install flask werkzeug requests gunicorn --quiet
+
+            # ── Write env vars into a .env file ──
+            cat > .env <<EOF
+            VIRUSTOTAL_API_KEY=${{ secrets.VIRUSTOTAL_API_KEY }}
+            EOF
+
+            # ── Restart via systemd (preferred) or fallback to process kill ──
+            if systemctl is-active --quiet dropnode; then
+              sudo systemctl restart dropnode
+            else
+              # Kill any existing gunicorn process for this app and start fresh
+              pkill -f "gunicorn.*app:app" || true
+              nohup .venv/bin/gunicorn \
+                --bind 0.0.0.0:5000 \
+                --workers 2 \
+                --timeout 300 \
+                --access-logfile logs/access.log \
+                --error-logfile  logs/error.log \
+                app:app &
+            fi
+
+            echo "✅ DropNode deployed successfully"
