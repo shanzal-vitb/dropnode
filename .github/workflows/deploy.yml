@@ -22,71 +22,74 @@ jobs:
         with:
           python-version: "3.11"
 
-      # ── 3. Create & populate virtual environment ──────────────────────────────
+      # ── 3. Create & populate virtual environment (CI smoke-test) ─────────────
       - name: Create virtual environment
         run: python -m venv .venv
 
       - name: Install dependencies
         run: |
           .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install flask werkzeug requests
+          .venv/bin/pip install flask werkzeug requests gunicorn
 
-      # ── 4. Verify app imports cleanly (smoke test) ────────────────────────────
+      # ── 4. Smoke-test: verify app.py imports cleanly ──────────────────────────
       - name: Smoke-test app import
-        run: |
-          .venv/bin/python -c "import app; print('app.py imports OK')"
+        run: .venv/bin/python -c "import app; print('app.py imports OK')"
         env:
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
 
-      # ── 5. Copy files to server via SSH ───────────────────────────────────────
+      # ── 5. Write SSH private key (no Docker, no third-party action) ──────────
+      - name: Write SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} \
+            >> ~/.ssh/known_hosts 2>/dev/null
+
+      # ── 6. Copy app files to server via rsync ────────────────────────────────
       - name: Copy files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host:     ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key:      ${{ secrets.SSH_PRIVATE_KEY }}
-          port:     ${{ secrets.SSH_PORT }}
-          source:   "app.py,index.html"   # only the two app files — no .venv (rebuilt on server)
-          target:   ${{ secrets.DEPLOY_PATH }}
+        run: |
+          rsync -az \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no" \
+            app.py index.html \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
 
-      # ── 6. SSH into server: rebuild venv & restart app ────────────────────────
+      # ── 7. SSH in: rebuild venv & restart Gunicorn ───────────────────────────
       - name: Deploy on server
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host:     ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key:      ${{ secrets.SSH_PRIVATE_KEY }}
-          port:     ${{ secrets.SSH_PORT }}
-          script: |
-            set -e
-            cd ${{ secrets.DEPLOY_PATH }}
+        run: |
+          ssh \
+            -i ~/.ssh/deploy_key \
+            -p ${{ secrets.SSH_PORT }} \
+            -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} bash -s << 'REMOTE'
+          set -e
+          cd "${{ secrets.DEPLOY_PATH }}"
 
-            # ── Create folders if first deploy ──
-            mkdir -p cache uploads
+          # Create runtime folders on first deploy
+          mkdir -p cache uploads logs
 
-            # ── Rebuild venv on the server ──
-            python3 -m venv .venv
-            .venv/bin/pip install --upgrade pip --quiet
-            .venv/bin/pip install flask werkzeug requests gunicorn --quiet
+          # Rebuild venv on the server
+          python3 -m venv .venv
+          .venv/bin/pip install --upgrade pip --quiet
+          .venv/bin/pip install flask werkzeug requests gunicorn --quiet
 
-            # ── Write env vars into a .env file ──
-            cat > .env <<EOF
-            VIRUSTOTAL_API_KEY=${{ secrets.VIRUSTOTAL_API_KEY }}
-            EOF
+          # Write env file (overwrite each deploy)
+          printf 'VIRUSTOTAL_API_KEY=%s\n' '${{ secrets.VIRUSTOTAL_API_KEY }}' > .env
 
-            # ── Restart via systemd (preferred) or fallback to process kill ──
-            if systemctl is-active --quiet dropnode; then
-              sudo systemctl restart dropnode
-            else
-              # Kill any existing gunicorn process for this app and start fresh
-              pkill -f "gunicorn.*app:app" || true
-              nohup .venv/bin/gunicorn \
-                --bind 0.0.0.0:5000 \
-                --workers 2 \
-                --timeout 300 \
-                --access-logfile logs/access.log \
-                --error-logfile  logs/error.log \
-                app:app &
-            fi
+          # Restart: prefer systemd, fall back to plain gunicorn nohup
+          if systemctl is-active --quiet dropnode 2>/dev/null; then
+            sudo systemctl restart dropnode
+          else
+            pkill -f 'gunicorn.*app:app' || true
+            sleep 1
+            nohup .venv/bin/gunicorn \
+              --bind 0.0.0.0:5000 \
+              --workers 2 \
+              --timeout 300 \
+              --access-logfile logs/access.log \
+              --error-logfile  logs/error.log \
+              app:app > /dev/null 2>&1 &
+          fi
 
-            echo "✅ DropNode deployed successfully"
+          echo "✅ DropNode deployed successfully"
+          REMOTE
