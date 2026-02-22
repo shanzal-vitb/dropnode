@@ -2,94 +2,40 @@ name: Deploy DropNode
 
 on:
   push:
-    branches:
-      - main          # trigger on every push to main
-  workflow_dispatch:  # allow manual trigger from GitHub Actions UI
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
-    name: Deploy to Server
     runs-on: ubuntu-latest
 
     steps:
-      # ── 1. Checkout source ────────────────────────────────────────────────────
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # ── 2. Set up Python ──────────────────────────────────────────────────────
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      # ── 3. Create & populate virtual environment (CI smoke-test) ─────────────
-      - name: Create virtual environment
-        run: python -m venv .venv
-
-      - name: Install dependencies
-        run: |
-          .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install flask werkzeug requests gunicorn
-
-      # ── 4. Smoke-test: verify app.py imports cleanly ──────────────────────────
-      - name: Smoke-test app import
-        run: .venv/bin/python -c "import app; print('app.py imports OK')"
-        env:
-          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
-
-      # ── 5. Write SSH private key (no Docker, no third-party action) ──────────
-      - name: Write SSH key
+      - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} \
-            >> ~/.ssh/known_hosts 2>/dev/null
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      # ── 6. Copy app files to server via rsync ────────────────────────────────
-      - name: Copy files to server
+      - name: Upload files
         run: |
-          rsync -az \
-            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no" \
-            app.py index.html \
+          scp -i ~/.ssh/id_rsa app.py index.html \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
 
-      # ── 7. SSH in: rebuild venv & restart Gunicorn ───────────────────────────
-      - name: Deploy on server
+      - name: Install & restart
         run: |
-          ssh \
-            -i ~/.ssh/deploy_key \
-            -p ${{ secrets.SSH_PORT }} \
-            -o StrictHostKeyChecking=no \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} bash -s << 'REMOTE'
-          set -e
-          cd "${{ secrets.DEPLOY_PATH }}"
-
-          # Create runtime folders on first deploy
-          mkdir -p cache uploads logs
-
-          # Rebuild venv on the server
-          python3 -m venv .venv
-          .venv/bin/pip install --upgrade pip --quiet
-          .venv/bin/pip install flask werkzeug requests gunicorn --quiet
-
-          # Write env file (overwrite each deploy)
-          printf 'VIRUSTOTAL_API_KEY=%s\n' '${{ secrets.VIRUSTOTAL_API_KEY }}' > .env
-
-          # Restart: prefer systemd, fall back to plain gunicorn nohup
-          if systemctl is-active --quiet dropnode 2>/dev/null; then
-            sudo systemctl restart dropnode
-          else
-            pkill -f 'gunicorn.*app:app' || true
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'ENDSSH'
+            cd ${{ secrets.DEPLOY_PATH }}
+            mkdir -p cache uploads logs
+            python3 -m venv .venv
+            .venv/bin/pip install -q flask werkzeug requests gunicorn
+            echo "VIRUSTOTAL_API_KEY=${{ secrets.VIRUSTOTAL_API_KEY }}" > .env
+            pkill -f "gunicorn.*app:app" || true
             sleep 1
-            nohup .venv/bin/gunicorn \
-              --bind 0.0.0.0:5000 \
-              --workers 2 \
-              --timeout 300 \
-              --access-logfile logs/access.log \
-              --error-logfile  logs/error.log \
+            nohup .venv/bin/gunicorn --bind 0.0.0.0:5000 --workers 2 \
+              --access-logfile logs/access.log --error-logfile logs/error.log \
               app:app > /dev/null 2>&1 &
-          fi
-
-          echo "✅ DropNode deployed successfully"
-          REMOTE
+            echo "Done"
+          ENDSSH
