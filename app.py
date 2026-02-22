@@ -17,7 +17,7 @@ app.config['MAX_CONTENT_LENGTH'] = 650 * 1024 * 1024  # 650MB
 CACHE_FOLDER  = 'cache'
 UPLOAD_FOLDER = 'uploads'
 DB_PATH       = 'dropnode.db'
-VIRUSTOTAL_API_KEY = 'YOUR_VIRUSTOTAL_V3_API_KEY_HERE'
+VIRUSTOTAL_API_KEY = os.environ.get('VIRUSTOTAL_API_KEY')
 VT_API_URL    = 'https://www.virustotal.com/api/v3'
 
 os.makedirs(CACHE_FOLDER,  exist_ok=True)
