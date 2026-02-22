@@ -1,0 +1,2260 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DropNode — Secure File Portal</title>
+  <!-- Favicon: inline SVG dropnode "d" mark in accent green -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a0a0a'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-family='Arial Black%2C sans-serif' font-weight='900' font-size='20' fill='%2300e5b0'%3Ed%3C/text%3E%3C/svg%3E" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Google+Sans+Flex:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <!--
+    Custom fonts loaded via @font-face from /static/fonts/ below.
+    If hosting externally, replace src URLs:
+      SamsungSharpSans-Bold  → https://cdn.dropnode.onehackers.dev/fonts/SamsungSharpSans-Bold.otf
+      PPSupplySans-Ultralight → https://cdn.dropnode.onehackers.dev/fonts/PPSupplySans-Ultralight.otf
+      PPSupplySans-Regular    → https://cdn.dropnode.onehackers.dev/fonts/PPSupplySans-Regular.otf
+  -->
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --border: #1e1e1e;
+      --border-light: #2a2a2a;
+      --text: #e8e8e8;
+      --muted: #666;
+      --accent: #00e5b0;
+      --accent-dim: #00e5b020;
+      --red: #ef4444;
+      --red-dim: #ef444420;
+      --green: #22c55e;
+      --green-dim: #22c55e20;
+      --yellow: #f59e0b;
+
+      /* ---- FLUID TYPE SCALE ---- */
+      --fs-xs:   clamp(0.6rem,  0.9vw,  0.75rem);
+      --fs-sm:   clamp(0.7rem,  1.1vw,  0.875rem);
+      --fs-base: clamp(0.8rem,  1.3vw,  1rem);
+      --fs-lg:   clamp(1rem,    1.8vw,  1.25rem);
+      --fs-xl:   clamp(1.1rem,  2.2vw,  1.5rem);
+      --fs-2xl:  clamp(1.3rem,  3vw,    2rem);
+      --fs-hero: clamp(1.8rem,  5.5vw,  3.75rem);
+      --fs-nav:  clamp(1rem,    2vw,    1.875rem);
+      --fs-footer-brand: clamp(1rem, 2.5vw, 2rem);
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 90px;
+      font-size: clamp(14px, 1.2vw, 17px);
+    }
+
+    @font-face {
+      font-family: 'SamsungSharpSans';
+      src: url('/static/fonts/SamsungSharpSans-Bold.otf') format('opentype');
+      font-weight: 700;
+    }
+
+    @font-face {
+      font-family: 'PPSupplySans';
+      src: url('/static/fonts/PPSupplySans-Ultralight.otf') format('opentype');
+      font-weight: 200;
+    }
+
+    @font-face {
+      font-family: 'PPSupplySans';
+      src: url('/static/fonts/PPSupplySans-Regular.otf') format('opentype');
+      font-weight: 400;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Google Sans Flex', sans-serif;
+      font-size: var(--fs-base);
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding-top: 16px;
+    }
+
+    .mono { font-family: 'Space Mono', monospace; }
+
+    /* ---- SCROLLBAR ---- */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+    /* ---- NAV ---- */
+    .nav-wrapper {
+      position: sticky;
+      top: 16px;
+      z-index: 50;
+      padding: 0 20px;
+      pointer-events: none;
+    }
+
+    nav {
+      pointer-events: all;
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      background: rgba(16, 16, 16, 0.75);
+      border: 1px solid rgba(0, 229, 176, 0.12);
+      border-radius: 14px;
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 18px rgba(0, 229, 176, 0.06),
+        0 1px 0 rgba(255, 255, 255, 0.05) inset;
+      max-width: 1200px;
+      margin: 0 auto;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    nav:hover {
+      border-color: rgba(0, 229, 176, 0.28);
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 32px rgba(0, 229, 176, 0.16),
+        0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    }
+
+    /* Nav logo fluid */
+    .nav-logo {
+      font-family: 'SamsungSharpSans';
+      font-weight: 700;
+      font-size: var(--fs-nav);
+      letter-spacing: -0.3px;
+      color: var(--accent);
+    }
+
+    /* ---- SEARCH BAR ---- */
+    .search-wrap {
+      position: relative;
+      flex: 1;
+      max-width: 240px;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      padding: 6px 12px 6px 34px;
+      font-size: var(--fs-xs);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .search-wrap input::placeholder { color: var(--muted); }
+    .search-wrap input:focus {
+      border-color: var(--accent);
+      background: rgba(0, 229, 176, 0.04);
+    }
+
+    .search-wrap .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    /* Search modal overlay */
+    #search-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
+      z-index: 999;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 120px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    #search-modal.open { opacity: 1; pointer-events: all; }
+
+    .search-modal-box {
+      background: #141414;
+      border: 1px solid var(--border-light);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 560px;
+      margin: 0 20px;
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+      transform: translateY(-12px);
+      transition: transform 0.2s cubic-bezier(.22, .68, 0, 1.2);
+    }
+
+    #search-modal.open .search-modal-box { transform: translateY(0); }
+
+    .search-modal-result {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .search-modal-result:last-child { border-bottom: none; }
+    .search-modal-result:hover { background: rgba(255, 255, 255, 0.04); }
+
+    /* ---- FOOTER FLOAT ---- */
+    .footer-wrapper {
+      padding: 0 20px 28px;
+      display: flex;
+      justify-content: center;
+    }
+
+    footer {
+      width: 100%;
+      max-width: 1200px;
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      background: rgba(16, 16, 16, 0.80);
+      border: 1px solid rgba(0, 229, 176, 0.12);
+      border-radius: 20px;
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 24px rgba(0, 229, 176, 0.07),
+        0 1px 0 rgba(255, 255, 255, 0.05) inset;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    footer:hover {
+      border-color: rgba(0, 229, 176, 0.28);
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 40px rgba(0, 229, 176, 0.16),
+        0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    }
+
+    /* Footer brand fluid */
+    .footer-brand-dropnode {
+      font-family: 'SamsungSharpSans';
+      font-weight: 700;
+      font-size: var(--fs-footer-brand);
+      letter-spacing: -0.3px;
+      color: var(--accent);
+    }
+
+    .footer-brand-onehackers {
+      font-size: var(--fs-footer-brand);
+      font-family: 'PPSupplySans';
+      background: linear-gradient(90deg, #38BDF8 0%, #818CF8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+      position: relative;
+      top: 2px;
+    }
+
+    /* ---- GLOW BOX ---- */
+    .glow-box {
+      border-color: rgba(0, 229, 176, 0.12) !important;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(0, 229, 176, 0.07) !important;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease !important;
+    }
+
+    .glow-box:hover {
+      border-color: rgba(0, 229, 176, 0.28) !important;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 229, 176, 0.16) !important;
+    }
+
+    /* ---- HERO GRID BACKGROUND ---- */
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse at 50% 0%, black 40%, transparent 80%);
+      pointer-events: none;
+    }
+
+    .glow {
+      position: absolute;
+      width: 600px;
+      height: 300px;
+      background: radial-gradient(ellipse, #00e5b015 0%, transparent 70%);
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    /* ---- HERO TEXT ---- */
+    .head-txt {
+      font-size: var(--fs-hero);
+      letter-spacing: -1.5px;
+      font-weight: 700;
+    }
+
+    .head-para {
+      font-size: var(--fs-sm);
+      color: var(--muted);
+      max-width: 42rem;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    /* ---- UPLOAD BOX ---- */
+    .upload-box {
+      background: var(--surface);
+      border: 1px solid rgba(0, 229, 176, 0.12);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(0, 229, 176, 0.07);
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upload-box:hover {
+      border-color: rgba(0, 229, 176, 0.28);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 229, 176, 0.16);
+    }
+
+    .upload-box.drag-over {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim), 0 0 40px rgba(0, 229, 176, 0.2);
+    }
+
+    /* ---- DROP ZONE ---- */
+    #drop-zone { cursor: pointer; transition: background 0.2s; }
+    #drop-zone:hover { background: #ffffff05; }
+
+    /* ---- RING ANIMATION ---- */
+    @keyframes spin-ring { to { transform: rotate(360deg); } }
+    .spin-ring { animation: spin-ring 1s linear infinite; }
+
+    /* ---- ANIMATIONS ---- */
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(32px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes slideInDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .anim-slide-right { animation: slideInRight 0.45s cubic-bezier(.22, .68, 0, 1.2) both; }
+    .anim-slide-down  { animation: slideInDown  0.4s  cubic-bezier(.22, .68, 0, 1.2) both; }
+    .anim-fade        { animation: fadeIn 0.3s ease both; }
+
+    /* ---- PROGRESS BAR ---- */
+    .progress-track {
+      background: var(--border-light);
+      border-radius: 99px;
+      height: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #00b4d8);
+      border-radius: 99px;
+      transition: width 0.15s linear;
+    }
+
+    /* ---- BUTTONS ---- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: var(--fs-sm);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary  { background: var(--accent); color: #000; }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .btn-outline  { border-color: var(--border-light); color: var(--text); background: transparent; }
+    .btn-outline:hover { background: #00ffff67; border-color: #444; }
+    .btn-danger   { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+    .btn-danger:hover { background: #ef444430; }
+    .btn-ghost    { color: var(--muted); background: transparent; border-color: transparent; }
+    .btn-ghost:hover { color: var(--text); }
+    .btn-disabled { opacity: 0.35 !important; cursor: not-allowed; pointer-events: none; transition: opacity 0.5s ease !important; }
+
+    /* ---- CANCEL BUTTON ---- */
+    .cancel-btn {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--border-light);
+      background: #ffffff08;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .cancel-btn:hover { background: var(--red-dim); border-color: var(--red); }
+
+    /* ---- SCAN RESULT CARD ---- */
+    .result-card {
+      background: var(--surface);
+      border: 1px solid rgba(0, 229, 176, 0.12);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(0, 229, 176, 0.07),
+                  0 1px 0 rgba(255, 255, 255, 0.05) inset;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .result-card:hover {
+      border-color: rgba(0, 229, 176, 0.28);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 229, 176, 0.16),
+                  0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    }
+
+    /* unsafe scan result panel — red glow */
+    #scan-results-panel.result-unsafe {
+      border-color: rgba(239, 68, 68, 0.15) !important;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(239, 68, 68, 0.08),
+                  0 1px 0 rgba(255, 255, 255, 0.05) inset !important;
+    }
+
+    #scan-results-panel.result-unsafe:hover {
+      border-color: rgba(239, 68, 68, 0.35) !important;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 42px rgba(239, 68, 68, 0.2),
+                  0 1px 0 rgba(255, 255, 255, 0.05) inset !important;
+    }
+
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+      font-size: var(--fs-sm);
+    }
+
+    .result-row:last-child { border-bottom: none; }
+    .result-label { color: var(--muted); flex-shrink: 0; }
+    .result-value { color: var(--text); font-weight: 500; text-align: right; word-break: break-all; }
+
+    .section-head {
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: #00cbff;
+      padding: 14px 0 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+
+    .status-bar {
+      padding: 10px 20px;
+      font-size: var(--fs-sm);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-safe   { background: var(--green-dim); color: var(--green); border-bottom: 1px solid #22c55e30; }
+    .status-unsafe { background: var(--red-dim);   color: var(--red);   border-bottom: 1px solid #ef444430; }
+
+    /* ---- FILE TYPE ICON ---- */
+    .file-icon {
+      width: 48px; height: 48px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      font-family: 'Space Mono', monospace;
+      flex-shrink: 0;
+    }
+
+    /* ---- FOOTER ---- */
+    .dev-card {
+      background: #ffffff06;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+    }
+
+    .tag-badge {
+      background: #ffffff08;
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: var(--fs-xs);
+      color: var(--green);
+    }
+
+    /* ---- MISC ---- */
+    .divider { height: 1px; background: var(--border); }
+
+    .hash-text {
+      font-family: 'Space Mono', monospace;
+      font-size: var(--fs-xs);
+      word-break: break-all;
+      color: #999;
+    }
+
+    .tooltip { position: relative; }
+    .hidden  { display: none !important; }
+
+    /* ---- HAMBURGER ---- */
+    #hamburger-btn {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      align-items: center;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border-light);
+      background: rgba(255, 255, 255, 0.04);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    #hamburger-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(0,229,176,0.3); }
+
+    #hamburger-btn span {
+      display: block;
+      width: 14px; height: 1.5px;
+      border-radius: 99px;
+      background: var(--text);
+      transition: transform 0.25s cubic-bezier(.22,.68,0,1.2), opacity 0.2s ease, background 0.2s;
+      transform-origin: center;
+    }
+
+    #hamburger-btn:hover span { background: var(--accent); }
+
+    #hamburger-btn.is-open span:nth-child(1) { transform: translateY(5.5px) rotate(45deg); }
+    #hamburger-btn.is-open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    #hamburger-btn.is-open span:nth-child(3) { transform: translateY(-5.5px) rotate(-45deg); }
+
+    #mobile-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: #141414;
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      padding: 8px;
+      min-width: 180px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-6px) scale(0.97);
+      transition: opacity 0.2s ease, transform 0.2s cubic-bezier(.22,.68,0,1.2);
+    }
+
+    #mobile-menu.open { opacity: 1; pointer-events: all; transform: translateY(0) scale(1); }
+
+    #mobile-menu a {
+      display: block;
+      padding: 8px 12px;
+      font-size: var(--fs-sm);
+      color: var(--muted);
+      border-radius: 6px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    #mobile-menu a:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+
+    /* ---- STATUS PILL ---- */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: var(--fs-xs);
+      font-weight: 500;
+      border: 1px solid;
+      transition: background 0.6s ease, border-color 0.6s ease, color 0.6s ease, opacity 0.4s ease;
+    }
+
+    .status-pill.online  { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.25); color: #22c55e; }
+    .status-pill.offline { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); color: #ef4444; }
+
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+      transition: background 0.6s ease, box-shadow 0.6s ease; }
+
+    .status-pill.online .status-dot {
+      background: #22c55e;
+      box-shadow: 0 0 6px #22c55e;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    .status-pill.offline .status-dot { background: #ef4444; box-shadow: none; }
+
+    @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+    /* Fade-swap: used when swapping pill/button text content in place */
+    @keyframes fadeSwap {
+      0%   { opacity: 0; transform: translateY(4px); }
+      100% { opacity: 1; transform: translateY(0);   }
+    }
+    .fade-in-content { animation: fadeSwap 0.35s ease both; }
+
+    /* ---- RESPONSIVE ---- */
+    @media (max-width: 1024px) {
+      .nav-wrapper { top: 10px; padding: 0 14px; }
+
+      nav > div {
+        padding: 12px 16px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        min-height: 52px !important;
+        gap: 12px !important;
+      }
+
+      nav > div > * { align-self: center !important; margin: 0 !important; flex-shrink: 0 !important; }
+
+      nav .flex.items-center.gap-4.text-sm.flex-shrink-0 { display: none !important; }
+      nav .search-wrap { display: none !important; }
+      #hamburger-btn { display: flex !important; }
+      #hamburger-wrapper { display: block !important; }
+
+      .footer-wrapper { padding: 0 12px 20px; }
+      footer { border-radius: 14px; }
+    }
+
+    @media (max-width: 767px) {
+      body { margin: 0 !important; }
+
+      .main-desc {
+        padding: 4rem 1.5rem !important;
+        overflow: hidden;
+      }
+
+      .nav-wrapper { top: 10px; padding: 0 10px; }
+
+      footer .grid { gap: 16px !important; }
+      footer .px-8 { padding: 14px !important; }
+
+      #scan-results-panel .flex.items-center.gap-3.p-6 {
+        flex-wrap: wrap; gap: 8px; padding: 14px !important;
+      }
+    }
+
+    @media (min-width: 425px) and (max-width: 768px) {
+      footer .grid {
+        grid-template-columns: 1fr 1fr !important;
+        grid-template-rows: auto auto !important;
+        gap: 16px !important;
+      }
+
+      footer .grid > div:nth-child(1) { grid-column: 1; grid-row: 1; text-align: left !important; }
+      footer .grid > div:nth-child(2) { grid-column: 2; grid-row: 1; text-align: center !important; }
+      footer .grid > div:nth-child(3) { grid-column: 1 / -1; grid-row: 2; text-align: center !important; align-items: center !important; }
+    }
+
+    @media (max-width: 465px) {
+      #state-uploaded .flex.items-center.gap-2.mt-6 { flex-wrap: wrap; gap: 8px; }
+      .status-bar { flex-wrap: wrap; gap: 6px; }
+      #scan-status-bar .ml-auto { width: 100%; justify-content: center; margin-top: 4px; }
+    }
+
+    /* ---- SNACKBAR ---- */
+    #snackbar-container {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .snackbar {
+      pointer-events: all;
+      min-width: 280px;
+      max-width: 360px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: var(--fs-xs);
+      font-weight: 500;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      opacity: 0;
+      transform: translateX(20px);
+      transition: opacity 0.25s ease, transform 0.25s cubic-bezier(.22,.68,0,1.2);
+    }
+
+    .snackbar.show { opacity: 1; transform: translateX(0); }
+    .snackbar.hide { opacity: 0; transform: translateX(20px); }
+
+    .snackbar-error {
+      background: #1a0606;
+      border: 1px solid #ef444440;
+      color: #f87171;
+    }
+
+    .snackbar-warn {
+      background: #1a1000;
+      border: 1px solid #f59e0b40;
+      color: #fbbf24;
+    }
+
+    .snackbar-success {
+      background: #001a0e;
+      border: 1px solid #22c55e40;
+      color: #4ade80;
+    }
+
+    .snackbar-success .snackbar-btn {
+      background: #22c55e20;
+      border-color: #22c55e60;
+      color: #4ade80;
+    }
+    .snackbar-success .snackbar-btn:hover { background: #22c55e40; }
+
+    .snackbar-body { flex: 1; line-height: 1.5; }
+
+    .snackbar-btn {
+      margin-top: 8px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid;
+      transition: background 0.15s;
+      display: inline-block;
+    }
+
+    .snackbar-error .snackbar-btn {
+      background: #ef444420;
+      border-color: #ef444460;
+      color: #f87171;
+    }
+    .snackbar-error .snackbar-btn:hover { background: #ef444440; }
+
+    .snackbar-warn .snackbar-btn {
+      background: #f59e0b20;
+      border-color: #f59e0b60;
+      color: #fbbf24;
+    }
+    .snackbar-warn .snackbar-btn:hover { background: #f59e0b40; }
+
+    .snackbar-close {
+      flex-shrink: 0;
+      width: 16px; height: 16px;
+      cursor: pointer;
+      opacity: 0.5;
+      transition: opacity 0.15s;
+      margin-top: 1px;
+    }
+    .snackbar-close:hover { opacity: 1; }
+  </style>
+</head>
+
+<body>
+
+  <!-- SNACKBAR CONTAINER -->
+  <div id="snackbar-container"></div>
+
+  <!-- NAV -->
+  <div class="nav-wrapper">
+    <nav>
+      <div class="px-7 py-4 flex items-center gap-4 justify-between">
+        <a href="#" class="flex items-center gap-3 flex-shrink-0 hover:opacity-80 transition-opacity">
+          <span class="nav-logo">dropnode</span>
+        </a>
+
+        <!-- Search bar -->
+        <div class="search-wrap">
+          <svg class="search-icon w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+          <input type="text" id="search-input" placeholder="Search by Drop ID..." autocomplete="off" />
+        </div>
+
+        <div class="flex items-center gap-4 text-sm flex-shrink-0" style="color: var(--muted);">
+          <a href="#upload" class="hover:text-white transition-colors">Upload</a>
+          <a href="#results" class="hover:text-white transition-colors">Results</a>
+          <a href="#about" class="hover:text-white transition-colors">About</a>
+        </div>
+
+        <!-- Hamburger (mobile only) -->
+        <div style="position:relative;flex-shrink:0;display:none;" id="hamburger-wrapper">
+          <button id="hamburger-btn" onclick="toggleMobileMenu()">
+            <span></span><span></span><span></span>
+          </button>
+          <div id="mobile-menu">
+            <div class="px-2 pb-2 pt-1">
+              <div style="position:relative;">
+                <svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;"
+                  width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <input id="search-input-mobile" type="text" placeholder="Search by Drop ID..." autocomplete="off"
+                  style="width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--border-light);border-radius:7px;padding:6px 10px 6px 28px;font-size:11.5px;color:var(--text);font-family:'Space Mono',monospace;outline:none;" />
+              </div>
+            </div>
+            <div style="height:1px;background:var(--border);margin:0 8px 6px;"></div>
+            <a href="#upload" onclick="toggleMobileMenu()">Upload</a>
+            <a href="#results" onclick="toggleMobileMenu()">Results</a>
+            <a href="#about" onclick="toggleMobileMenu()">About</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+  </div>
+
+  <!-- SEARCH MODAL -->
+  <div id="search-modal" onclick="closeSearchModal(event)">
+    <div class="search-modal-box">
+      <div class="px-5 py-4 flex items-center gap-3" style="border-bottom:1px solid var(--border);">
+        <svg class="w-4 h-4 flex-shrink-0" style="color:var(--muted);" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+        </svg>
+        <span id="search-modal-query" class="text-sm mono" style="color:var(--muted);"></span>
+        <button onclick="closeSearchModal()" class="ml-auto text-xs btn btn-ghost">✕ Close</button>
+      </div>
+      <div id="search-modal-body" class="max-h-96 overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <section class="main-desc relative py-20 px-6 text-center" style="overflow:hidden;">
+    <div class="hero-bg"></div>
+    <div class="glow"></div>
+    <div class="relative">
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-6"
+        style="background:var(--accent-dim);color:var(--accent);border:1px solid #00e5b030;">
+        <span class="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
+        Dropped · Scanned · Verified
+      </div>
+      <h1 class="head-txt font-bold tracking-tight mb-10">The <span style="color:var(--accent);">drop</span> you trust. <br>
+        The <span style="color:var(--accent);">node</span> that protects
+      </h1>
+      <p class="head-para">
+        DropNode is your system's bouncer for file uploads. Every file that tries to enter gets checked, scanned, and
+        verified before it's allowed inside. No shady business. No suspicious attachments sneaking past the door.
+        <br><br>
+        Built as a secure file upload portal, DropNode makes sharing files simple while keeping threats out. It encrypts
+        transfers, validates uploads, and keeps everything organized — so you can focus on your work instead of worrying
+        about what just got uploaded.
+        <br><br>
+        Think of it as a smart checkpoint for your data. Files drop in. Threats don't.
+      </p>
+    </div>
+  </section>
+
+  <!-- MAIN UPLOAD AREA -->
+  <section id="upload" class="max-w-3xl mx-auto px-4 pb-8">
+    <div class="upload-box" id="main-box">
+
+      <!-- STATE 0: DROP ZONE -->
+      <div id="state-drop" class="p-8 md:p-12 flex flex-col items-center gap-5">
+        <div id="drop-zone" class="w-full rounded-xl p-10 text-center transition-all"
+          style="border: 1.5px dashed var(--border-light);">
+          <div class="mb-4 flex justify-center">
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center"
+              style="background:var(--accent-dim);border:1px solid #00e5b030;">
+              <svg class="w-7 h-7" style="color:var(--accent);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+            </div>
+          </div>
+          <p class="font-semibold text-base mb-1">Drag &amp; drop your file here</p>
+          <p class="text-sm mb-5" style="color:var(--muted);">or click to browse — up to 650 MB</p>
+          <button onclick="document.getElementById('file-input').click()" class="btn btn-outline">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+            </svg>
+            Choose File
+          </button>
+        </div>
+        <p class="text-xs font-bold mb-1 flex items-center gap-1.5" style="color: var(--accent);">
+          <img src="/static/assets/save.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
+          Save the Drop ID to find the scan results later.
+        </p>
+        <p class="text-xs" style="color: var(--muted);">Files are scanned using VirusTotal API before being stored.
+          Unsafe files are auto-deleted within 3 minutes.</p>
+      </div>
+
+      <!-- STATE 1: UPLOADING -->
+      <div id="state-uploading" class="hidden px-8 py-10">
+        <div class="anim-slide-right flex items-center gap-5">
+          <div class="relative flex-shrink-0 w-12 h-12">
+            <svg class="w-12 h-12 spin-ring" viewBox="0 0 48 48" fill="none">
+              <!-- Track -->
+              <circle cx="24" cy="24" r="20" stroke="#1e1e1e" stroke-width="4" />
+              <!-- 270° arc: starts top (24,4), goes clockwise, ends left (4,24) -->
+              <!-- Rendered as two halves so linearGradient follows the arc direction -->
+              <!-- Half 1: top (24,4) → bottom (24,44) — right semicircle, 180° -->
+              <path d="M24 4 A20 20 0 0 1 24 44" stroke="url(#rg_a)" stroke-width="4" stroke-linecap="butt" />
+              <!-- Half 2: bottom (24,44) → left (4,24) — bottom-left quarter, 90° -->
+              <path d="M24 44 A20 20 0 0 1 4 24" stroke="url(#rg_b)" stroke-width="4" stroke-linecap="round" />
+              <defs>
+                <!-- Half 1: transparent at top → solid at bottom -->
+                <linearGradient id="rg_a" x1="24" y1="4" x2="24" y2="44" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="#00e5b0" stop-opacity="0" />
+                  <stop offset="1" stop-color="#00e5b0" stop-opacity="0.85" />
+                </linearGradient>
+                <!-- Half 2: solid at bottom → bright at left tip -->
+                <linearGradient id="rg_b" x1="24" y1="44" x2="4" y2="24" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="#00e5b0" stop-opacity="0.85" />
+                  <stop offset="1" stop-color="#00ffdd" stop-opacity="1" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-semibold text-sm">Uploading...</span>
+              <span id="upload-pct" class="text-xs mono" style="color:var(--accent);">0%</span>
+            </div>
+            <p id="upload-fname" class="text-xs mb-3 truncate" style="color:var(--muted);"></p>
+            <div class="progress-track">
+              <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+            </div>
+          </div>
+          <button class="cancel-btn" onclick="cancelUpload()" title="Cancel">
+            <svg class="w-3.5 h-3.5" style="color:var(--muted);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- STATE 2: UPLOAD FAILED -->
+      <div id="state-failed" class="hidden px-8 py-10">
+        <div class="anim-slide-down flex items-center gap-4 justify-center">
+          <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+            style="background:var(--red-dim);border:1px solid #ef444440;">
+            <svg class="w-5 h-5" style="color:var(--red);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+          </div>
+          <span class="font-semibold text-sm" style="color:var(--red);">Upload Failed</span>
+          <button onclick="retryUpload()" class="btn btn-outline ml-auto text-xs">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+            Re-upload
+          </button>
+        </div>
+      </div>
+
+      <!-- STATE 3: FILE UPLOADED -->
+      <div id="state-uploaded" class="hidden p-8">
+        <div class="anim-slide-right">
+          <div class="flex items-start gap-4">
+            <div id="file-type-icon" class="file-icon" style="background:var(--accent-dim);color:var(--accent);">FILE</div>
+            <div class="flex-1 min-w-0 text-sm space-y-1.5">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 overflow-hidden">
+                  <p class="flex items-baseline gap-1.5 min-w-0"><span style="color:var(--muted);flex-shrink:0;">File:</span> <span id="info-name" class="font-medium block truncate min-w-0"></span></p>
+                  <p><span style="color:var(--muted);">Type:</span> <span id="info-type"></span></p>
+                  <p><span style="color:var(--muted);">Size:</span> <span id="info-size"></span></p>
+                </div>
+                <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                  style="background:var(--green-dim);border:1px solid #22c55e40;">
+                  <svg class="w-4 h-4" style="color:var(--green);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                </div>
+              </div>
+              <p class="hash-text"><span style="color:var(--muted);">SHA-256:</span> <span id="info-sha256"></span></p>
+              <div id="drop-id-row" class="hash-text mt-1" style="display:none;align-items:center;gap:6px;">
+                <span style="color:var(--muted);flex-shrink:0;">Drop ID:</span>
+                <span id="info-drop-id" style="font-family:'Space Mono',monospace;font-size:var(--fs-xs);color:var(--accent);letter-spacing:0.04em;opacity:0;transition:opacity 0.5s ease;"></span>
+                <button id="btn-copy-drop-id" onclick="copyDropId()" title="Copy Drop ID"
+                  style="flex-shrink:0;width:18px;height:18px;border-radius:4px;border:1px solid rgba(0,229,176,0.3);
+                         background:rgba(0,229,176,0.08);color:var(--accent);display:inline-flex;align-items:center;
+                         justify-content:center;cursor:pointer;transition:background 0.15s,border-color 0.15s;opacity:0;
+                         transition:opacity 0.5s ease,background 0.15s,border-color 0.15s;"
+                  onmouseover="this.style.background='rgba(0,229,176,0.18)';this.style.borderColor='rgba(0,229,176,0.6)'"
+                  onmouseout="this.style.background='rgba(0,229,176,0.08)';this.style.borderColor='rgba(0,229,176,0.3)'">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 mt-6 flex-wrap">
+            <div id="scan-btn-area" class="flex items-center gap-3">
+              <button onclick="scanFile()" class="btn btn-primary" id="scan-btn">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                </svg>
+                Scan File &amp; Upload
+              </button>
+              <span id="scan-complete-text" class="scan-complete-text text-xs font-medium hidden" style="color:var(--green);">Scanning Complete</span>
+            </div>
+            <div class="flex items-center gap-2 ml-auto">
+              <button onclick="reUpload()" id="btn-reupload" class="btn btn-outline text-xs">Re-upload</button>
+              <button id="btn-show-result" onclick="showResultPanel()" class="btn btn-outline text-xs btn-disabled" style="transition: opacity 0.5s ease !important;">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+                Show Result
+              </button>
+              <button onclick="resetAll()" class="btn btn-outline text-xs">Upload Another</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATE 4: SCANNING -->
+      <div id="state-scanning" class="hidden px-8 py-10">
+        <div class="anim-slide-right flex items-center gap-5">
+          <div class="relative flex-shrink-0 w-12 h-12">
+            <svg class="w-12 h-12 spin-ring" viewBox="0 0 48 48" fill="none">
+              <!-- Track -->
+              <circle cx="24" cy="24" r="20" stroke="#1e1e1e" stroke-width="4" />
+              <!-- 270° arc: starts top (24,4), goes clockwise, ends left (4,24) -->
+              <!-- Half 1: top (24,4) → bottom (24,44) — right semicircle, 180° -->
+              <path d="M24 4 A20 20 0 0 1 24 44" stroke="url(#rg2_a)" stroke-width="4" stroke-linecap="butt" />
+              <!-- Half 2: bottom (24,44) → left (4,24) — bottom-left quarter, 90° -->
+              <path d="M24 44 A20 20 0 0 1 4 24" stroke="url(#rg2_b)" stroke-width="4" stroke-linecap="round" />
+              <defs>
+                <!-- Half 1: transparent at top → solid at bottom -->
+                <linearGradient id="rg2_a" x1="24" y1="4" x2="24" y2="44" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="#f59e0b" stop-opacity="0" />
+                  <stop offset="1" stop-color="#f59e0b" stop-opacity="0.85" />
+                </linearGradient>
+                <!-- Half 2: solid at bottom → bright orange tip -->
+                <linearGradient id="rg2_b" x1="24" y1="44" x2="4" y2="24" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="#f59e0b" stop-opacity="0.85" />
+                  <stop offset="1" stop-color="#ff6a00" stop-opacity="1" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <p class="font-semibold text-sm mb-3">Scanning...</p>
+            <div class="flex items-center justify-between mb-1">
+              <p class="text-xs" style="color:var(--muted);">This may take up to 5 minutes. Please wait.</p>
+              <span id="scan-pct" class="text-xs font-semibold mono" style="color:#f59e0b;">0%</span>
+            </div>
+            <div class="progress-track">
+              <div id="scan-progress-fill" class="progress-fill"
+                style="width:0%;background:linear-gradient(90deg,#f59e0b,#f97316);border-radius:999px;transition:width 0.4s ease;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /upload-box -->
+    <input type="file" id="file-input" class="hidden" />
+  </section>
+
+  <!-- SCAN RESULTS -->
+  <section id="results" class="max-w-3xl mx-auto px-4 pb-16">
+    <h2 class="text-base font-semibold mb-4 mono" style="color:var(--accent); letter-spacing:0.5px;">/ Scan Results</h2>
+
+    <div id="no-results" class="result-card p-12 text-center">
+      <p class="text-sm" style="color:var(--muted);">No files uploaded, yet :)</p>
+    </div>
+
+    <div id="scan-results-panel" class="hidden result-card anim-fade">
+      <div id="scan-status-bar" class="status-bar" style="display:flex;align-items:center;gap:10px;">
+        <span id="scan-status-icon" style="flex-shrink:0;"></span>
+        <span id="scan-status-text" class="font-bold" style="flex-shrink:0;"></span>
+        <!-- Spacer always pushes warning+close to the far right -->
+        <span style="flex:1;"></span>
+        <!-- Warning chip (unsafe only) — sits left of close btn -->
+        <span id="scan-status-warning" class="hidden" style="flex-shrink:0;"></span>
+        <!-- Red close: shown on UNSAFE results -->
+        <button id="btn-close-result" onclick="closeSearchResult()"
+          style="width:22px;height:22px;border-radius:50%;background:#ef444420;border:1.5px solid #ef444460;
+                 color:#ef4444;display:none;align-items:center;justify-content:center;cursor:pointer;
+                 flex-shrink:0;transition:background 0.2s,border-color 0.2s,opacity 0.3s ease;"
+          onmouseover="this.style.background='#ef444438'" onmouseout="this.style.background='#ef444420'">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/>
+          </svg>
+        </button>
+        <!-- Green close: shown on SAFE results -->
+        <button id="btn-close-result-safe" onclick="closeSearchResult()"
+          style="width:22px;height:22px;border-radius:50%;background:#22c55e20;border:1.5px solid #22c55e60;
+                 color:#22c55e;display:none;align-items:center;justify-content:center;cursor:pointer;
+                 flex-shrink:0;transition:background 0.2s,border-color 0.2s,opacity 0.3s ease;"
+          onmouseover="this.style.background='#22c55e38'" onmouseout="this.style.background='#22c55e20'">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-0">
+        <div class="result-row" style="padding-top:0;border-bottom:1px solid var(--border);">
+          <span class="result-label">File Name</span>
+          <span class="result-value font-semibold" id="r-file-name" style="word-break:break-all;"></span>
+        </div>
+        <p class="section-head">Overall Summary</p>
+        <div class="result-row"><span class="result-label">Threat Status</span><span class="result-value" id="r-threat-status"></span></div>
+        <div class="result-row"><span class="result-label">Overall Risk Score</span><span class="result-value" id="r-risk-score"></span></div>
+        <div class="result-row"><span class="result-label">Risk Badge</span><span class="result-value" id="r-risk-badge"></span></div>
+
+        <p class="section-head">Threat &amp; Detection</p>
+        <div class="result-row"><span class="result-label">Detection Ratio</span><span class="result-value" id="r-detection-ratio"></span></div>
+        <div class="result-row"><span class="result-label">Engines Scanned</span><span class="result-value" id="r-engines"></span></div>
+        <div class="result-row"><span class="result-label">Malware Signature</span><span class="result-value" id="r-malware-sig"></span></div>
+        <div class="result-row"><span class="result-label">Threat Category</span><span class="result-value" id="r-threat-cat"></span></div>
+        <div class="result-row flex-col">
+          <span class="result-label mb-2">Flagged Engines</span>
+          <div id="r-flagged" class="text-right text-xs" style="color:var(--red);"></div>
+        </div>
+
+        <p class="section-head">File Info</p>
+        <div class="result-row"><span class="result-label">File Type</span><span class="result-value" id="r-file-type"></span></div>
+        <div class="result-row"><span class="result-label">File Size</span><span class="result-value" id="r-file-size"></span></div>
+        <div class="result-row"><span class="result-label">MIME Type</span><span class="result-value" id="r-mime"></span></div>
+
+        <p class="section-head">File Integrity</p>
+        <div class="result-row"><span class="result-label">SHA-256</span><span class="result-value hash-text" id="r-sha256"></span></div>
+        <div class="result-row"><span class="result-label">MD5</span><span class="result-value hash-text" id="r-md5"></span></div>
+        <div class="result-row"><span class="result-label">Digital Signature</span><span class="result-value" id="r-dig-sig"></span></div>
+        <div class="result-row"><span class="result-label">Publisher</span><span class="result-value" id="r-publisher"></span></div>
+        <div class="result-row"><span class="result-label">Certificate Validity</span><span class="result-value" id="r-cert"></span></div>
+
+        <p class="section-head">File Metadata</p>
+        <div class="result-row"><span class="result-label">File Creation Date</span><span class="result-value" id="r-created"></span></div>
+        <div class="result-row"><span class="result-label">Last Modified Date</span><span class="result-value" id="r-modified"></span></div>
+
+        <p class="section-head">Scan Info</p>
+        <div class="result-row"><span class="result-label">Scan Timestamp</span><span class="result-value" id="r-timestamp"></span></div>
+        <div class="result-row" style="align-items:center;"><span class="result-label">Drop ID</span><span class="result-value" style="display:flex;align-items:center;justify-content:flex-end;gap:6px;"><button onclick="copyResultDropId()" title="Copy Drop ID" style="flex-shrink:0;width:18px;height:18px;border-radius:4px;border:1px solid rgba(0,229,176,0.3);background:rgba(0,229,176,0.08);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.15s,border-color 0.15s;" id="btn-copy-result-drop-id" onmouseover="this.style.background='rgba(0,229,176,0.18)';this.style.borderColor='rgba(0,229,176,0.6)'" onmouseout="this.style.background='rgba(0,229,176,0.08)';this.style.borderColor='rgba(0,229,176,0.3)'"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button><span class="mono text-xs" id="r-upload-id" style="letter-spacing:0.04em;color:var(--accent);"></span></span></div>
+      </div>
+
+      <div class="flex items-center gap-3 p-6 pt-0 flex-wrap">
+        <button id="btn-download-report" onclick="downloadReport()" class="btn btn-outline text-xs">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+          </svg>
+          Download File Report [HTML]
+        </button>
+        <button id="btn-rescan" onclick="reScan()" class="btn btn-outline text-xs">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+          Re-Scan File
+        </button>
+        <button id="btn-download-file" onclick="downloadFile()" class="btn btn-primary text-xs ml-auto">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          Download File
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT / CORE CONCEPT -->
+  <section id="about" class="max-w-3xl mx-auto px-4 pb-16">
+    <div class="upload-box glow-box p-8 md:p-10">
+      <h2 class="text-xl font-bold mb-2">Core Concept</h2>
+      <p class="text-sm leading-relaxed mb-8" style="color:var(--muted);">
+        DropNode functions as a secure gateway for file transfers. Every file that "drops" into the system
+        passes through a validation layer — ensuring safety, integrity, and controlled access. It combines
+        streamlined upload flows with backend security mechanisms to prevent malicious or unauthorized
+        content from entering the system.
+      </p>
+
+      <h3 class="font-semibold mb-4">Key Features</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+        <div class="p-4 rounded-xl" style="background:#ffffff05;border:1px solid var(--border);">
+          <p class="font-semibold text-sm mb-1 flex items-center gap-1.5">
+            <img src="/static/assets/secure.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
+            Secure File Uploads
+          </p>
+          <p class="text-xs" style="color:var(--muted);">Encrypted transfer protocols ensure data protection during upload.</p>
+        </div>
+        <div class="p-4 rounded-xl" style="background:#ffffff05;border:1px solid var(--border);">
+          <p class="font-semibold text-sm mb-1 flex items-center gap-1.5">
+            <img src="/static/assets/validation.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
+            Validation &amp; Scanning Layer
+          </p>
+          <p class="text-xs" style="color:var(--muted);">Files are automatically verified and checked before being accepted.</p>
+        </div>
+        <div class="p-4 rounded-xl" style="background:#ffffff05;border:1px solid var(--border);">
+          <p class="font-semibold text-sm mb-1 flex items-center gap-1.5">
+            <img src="/static/assets/access.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
+            Access Control &amp; Permissions
+          </p>
+          <p class="text-xs" style="color:var(--muted);">Role-based access to ensure only authorized users can upload or retrieve files.</p>
+        </div>
+        <div class="p-4 rounded-xl" style="background:#ffffff05;border:1px solid var(--border);">
+          <p class="font-semibold text-sm mb-1 flex items-center gap-1.5">
+            <img src="/static/assets/clean.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
+            Clean &amp; Minimal UI
+          </p>
+          <p class="text-xs" style="color:var(--muted);">A fast, intuitive interface designed for frictionless user interaction.</p>
+        </div>
+        <div class="p-4 rounded-xl sm:col-span-2" style="background:#ffffff05;border:1px solid var(--border);">
+          <p class="font-semibold text-sm mb-1 flex items-center gap-1.5">
+            <img src="/static/assets/scalable.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
+            Scalable Architecture
+          </p>
+          <p class="text-xs" style="color:var(--muted);">Built to handle increasing upload volumes without compromising performance.</p>
+        </div>
+      </div>
+
+      <div class="p-5 rounded-xl" style="background:var(--accent-dim);border:1px solid #00e5b030;">
+        <h3 class="font-bold mb-2 text-sm" style="color:var(--accent);">Why DropNode?</h3>
+        <p class="text-sm leading-relaxed" style="color:#ccc;">
+          In today's digital ecosystem, file exchange is constant — but security risks are high. DropNode acts
+          as a core security checkpoint, ensuring every file entering your system is controlled, monitored, and protected.
+        </p>
+        <p class="text-sm mt-2 font-medium" style="color:var(--accent);">
+          It's not just a file uploader — it's a secure drop point with intelligence at its core.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <div class="footer-wrapper">
+    <footer>
+      <div class="px-8 py-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center text-center md:text-left">
+
+          <!-- Left: Devs -->
+          <div class="dev-card md:text-left text-center">
+            <p class="text-xs font-semibold mb-3" style="color:var(--muted);letter-spacing:0.8px;">DEVs</p>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <p class="text-sm font-semibold">Shanzal Firoz</p>
+                  <p class="text-xs" style="color:var(--muted);text-align:left !important;">Lead</p>
+                </div>
+                <a href="https://github.com/shanzal-vitb/" target="_blank" class="text-gray-500 hover:text-white transition-colors">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                  </svg>
+                </a>
+              </div>
+              <div class="flex items-center justify-between">
+                <p class="text-sm">Navni Danwani</p>
+                <a href="https://github.com/navni25bey10011-sys" target="_blank" class="text-gray-500 hover:text-white transition-colors">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                  </svg>
+                </a>
+              </div>
+              <div class="flex items-center justify-between">
+                <p class="text-sm">Aditya Vishwakarma</p>
+                <a href="https://github.com/Sinflin" target="_blank" class="text-gray-500 hover:text-white transition-colors">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Center: University -->
+          <div class="text-center my-2">
+            <img src="/static/assets/VIT_Bhopal.svg" alt="VIT Bhopal" class="mx-auto"
+              style="width:6rem;height:6rem;object-fit:contain;" />
+            <p class="text-xs mt-1" style="color:var(--muted);">Made for Cyber Carnival 2K26 | VIT-B</p>
+            <div id="system-status-pill" class="status-pill offline mt-2">
+              <span class="status-dot"></span>
+              <span id="system-status-text">Checking...</span>
+            </div>
+          </div>
+
+          <!-- Right: Brand & Links -->
+          <div class="flex flex-col items-end md:items-end items-center gap-3 m-4">
+            <a href="#" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <span class="footer-brand-dropnode">dropnode</span>
+              <span style="color:#fff;">·</span>
+              <span class="footer-brand-onehackers">
+                <span style="font-weight:200;">0ne</span><span style="font-weight:400;">Hackers</span>
+              </span>
+            </a>
+            <div class="flex items-center gap-2">
+              <a href="https://github.com/shanzal-vitb/dropnode/" target="_blank"
+                class="flex items-center gap-1.5 text-xs hover:text-white transition-colors"
+                style="color:var(--muted);">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                </svg>
+                GitHub
+              </a>
+              <span class="tag-badge">Build: Beta - V1.0</span>
+            </div>
+            <p style="color:#444;font-size:var(--fs-xs);text-align:end;">Copyright © 2026, dropnode, All Rights Reserved</p>
+          </div>
+
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    let currentFile = null;
+    let currentFilename = null;
+    let scanResult = null;         // result currently shown in panel (live or searched)
+    let liveScanResult = null;     // always the latest completed live scan result
+    let xhr = null;
+    let deleteTimer = null;        // single 180s timer — started once per unsafe scan, never reset
+    let scanIntervalId = null;     // module-level so we can always clear the old one on re-scan
+
+    const states = {
+      drop: document.getElementById('state-drop'),
+      uploading: document.getElementById('state-uploading'),
+      failed: document.getElementById('state-failed'),
+      uploaded: document.getElementById('state-uploaded'),
+      scanning: document.getElementById('state-scanning'),
+    };
+
+    function showState(name) {
+      Object.values(states).forEach(el => el.classList.add('hidden'));
+      states[name].classList.remove('hidden');
+    }
+
+    // ── SNACKBAR ────────────────────────────────────────────────────────────────
+    function showSnack({ type = 'error', message, buttonLabel, onButton, duration = 6000 }) {
+      const container = document.getElementById('snackbar-container');
+      const el = document.createElement('div');
+      el.className = `snackbar snackbar-${type}`;
+
+      const closeId = 'snack-x-' + Date.now();
+      const btnId   = 'snack-b-' + Date.now();
+
+      el.innerHTML = `
+        <div class="snackbar-body">
+          ${message}
+          ${buttonLabel ? `<div><button class="snackbar-btn" id="${btnId}">${buttonLabel}</button></div>` : ''}
+        </div>
+        <svg class="snackbar-close" id="${closeId}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/>
+        </svg>`;
+
+      container.appendChild(el);
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+
+      let dismissed = false;
+      function dismiss() {
+        if (dismissed) return;
+        dismissed = true;
+        el.classList.add('hide');
+        el.classList.remove('show');
+        setTimeout(() => el.remove(), 280);
+      }
+
+      document.getElementById(closeId).addEventListener('click', dismiss);
+      if (buttonLabel && onButton) {
+        document.getElementById(btnId).addEventListener('click', () => { onButton(); dismiss(); });
+      }
+
+      if (duration > 0) setTimeout(dismiss, duration);
+      return dismiss; // caller can dismiss early
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+    }
+
+    function getExtension(filename) { return filename.split('.').pop().toUpperCase() || 'FILE'; }
+
+    function getIconColor(ext) {
+      const map = {
+        PDF: ['#ef4444','#fee2e2'], DOC: ['#3b82f6','#dbeafe'], DOCX: ['#3b82f6','#dbeafe'],
+        XLS: ['#22c55e','#dcfce7'], XLSX: ['#22c55e','#dcfce7'], ZIP: ['#f59e0b','#fef3c7'],
+        RAR: ['#f59e0b','#fef3c7'], EXE: ['#8b5cf6','#ede9fe'], PNG: ['#ec4899','#fce7f3'],
+        JPG: ['#ec4899','#fce7f3'], JPEG: ['#ec4899','#fce7f3'], MP4: ['#06b6d4','#cffafe'],
+        MKV: ['#06b6d4','#cffafe'], MP3: ['#a855f7','#f3e8ff'], PY: ['#00e5b0','#d0fff6'],
+        JS: ['#f59e0b','#fef3c7'],
+      };
+      return map[ext] || ['#94a3b8','#f1f5f9'];
+    }
+
+    document.getElementById('file-input').addEventListener('change', function () {
+      if (this.files[0]) handleFile(this.files[0]);
+    });
+
+    const dropZone = document.getElementById('drop-zone');
+    const mainBox = document.getElementById('main-box');
+
+    ['dragenter','dragover'].forEach(ev => {
+      mainBox.addEventListener(ev, e => { e.preventDefault(); mainBox.classList.add('drag-over'); });
+    });
+    ['dragleave','drop'].forEach(ev => {
+      mainBox.addEventListener(ev, e => { e.preventDefault(); mainBox.classList.remove('drag-over'); });
+    });
+    mainBox.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
+    dropZone.addEventListener('click', () => document.getElementById('file-input').click());
+
+    function handleFile(file) {
+      if (file.size > 650 * 1024 * 1024) { showSnack({ type: 'error', message: '<strong>File too large</strong><br>Maximum upload size is 650 MB.', duration: 5000 }); return; }
+      currentFile = file;
+      uploadFile(file);
+    }
+
+    function uploadFile(file) {
+      showState('uploading');
+      document.getElementById('upload-fname').textContent = file.name;
+      document.getElementById('upload-pct').textContent = '0%';
+      document.getElementById('progress-fill').style.width = '0%';
+
+      const formData = new FormData();
+      formData.append('file', file);
+      xhr = new XMLHttpRequest();
+      xhr.open('POST', '/upload', true);
+
+      xhr.upload.addEventListener('progress', e => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          document.getElementById('upload-pct').textContent = pct + '%';
+          document.getElementById('progress-fill').style.width = pct + '%';
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          currentFilename = data.filename;
+          showFileInfo(data, file);
+        } else if (xhr.status === 403) {
+          // File is pending deletion — stay on current state, never navigate away
+          const resp = (() => { try { return JSON.parse(xhr.responseText); } catch { return {}; } })();
+          const secs = resp.seconds_remaining ?? '?';
+          showSnack({
+            type: 'error',
+            message: `<strong>Error Re-uploading</strong><br>This file will be deleted in ${secs}s. Cannot overwrite a file pending deletion.`,
+            duration: 6000
+          });
+          // Stay on 'uploaded' state, restore buttons to their current state
+          showState('uploaded');
+        } else {
+          showState('failed');
+        }
+      });
+
+      xhr.addEventListener('error', () => showState('failed'));
+      xhr.addEventListener('abort', () => showState('drop'));
+      xhr.send(formData);
+    }
+
+    function cancelUpload() { if (xhr) xhr.abort(); showState('drop'); }
+    function retryUpload() { if (currentFile) uploadFile(currentFile); }
+
+    function reUpload() {
+      if (!currentFile) return;
+      // If a deletion is pending for this file, show snackbar and abort — never start upload
+      if (deleteTimer !== null) {
+        showSnack({
+          type: 'error',
+          message: `<strong>Error Re-uploading</strong><br>File will be deleted in 3 minutes. Cannot re-upload.`,
+          duration: 6000
+        });
+        return;
+      }
+      uploadFile(currentFile);
+    }
+
+    function resetAll() {
+      if (deleteTimer) { clearTimeout(deleteTimer); deleteTimer = null; }
+      if (scanIntervalId) { clearInterval(scanIntervalId); scanIntervalId = null; }
+      currentFile = null; currentFilename = null;
+      // Only wipe scanResult if it's a live result — searched results must survive resetAll
+      if (!scanResult || !scanResult._fromSearch) { scanResult = null; }
+      liveScanResult = null;
+      document.getElementById('file-input').value = '';
+      const showResultBtn = document.getElementById('btn-show-result');
+      if (showResultBtn) showResultBtn.classList.add('btn-disabled');
+      const completeTxt = document.getElementById('scan-complete-text');
+      if (completeTxt) { completeTxt.classList.add('hidden'); completeTxt.style.opacity = '0'; }
+      showState('drop');
+
+      // Collapse results panel only if it's showing a LIVE scan result (not a search result)
+      const panel      = document.getElementById('scan-results-panel');
+      const noResults  = document.getElementById('no-results');
+      const isSearched = scanResult && scanResult._fromSearch;
+      if (!panel.classList.contains('hidden') && !isSearched) {
+        // Hide close buttons immediately
+        ['btn-close-result', 'btn-close-result-safe'].forEach(id => {
+          const btn = document.getElementById(id);
+          if (btn) { btn.style.opacity = '0'; setTimeout(() => { btn.style.display = 'none'; }, 260); }
+        });
+
+        // Measure target height from no-results card
+        noResults.style.visibility = 'hidden';
+        noResults.classList.remove('hidden');
+        const targetH = noResults.offsetHeight;
+        noResults.classList.add('hidden');
+        noResults.style.visibility = '';
+
+        const fullH = panel.scrollHeight;
+        panel.style.overflow  = 'hidden';
+        panel.style.maxHeight = fullH + 'px';
+        panel.offsetHeight;
+
+        panel.style.transition = 'opacity 0.38s ease, max-height 0.52s cubic-bezier(0.4,0,0.2,1)';
+        panel.style.opacity    = '0';
+        panel.style.maxHeight  = targetH + 'px';
+
+        setTimeout(() => {
+          panel.classList.add('hidden');
+          panel.style.opacity    = '';
+          panel.style.maxHeight  = '';
+          panel.style.transition = '';
+          panel.style.overflow   = '';
+          panel.classList.remove('result-unsafe');
+
+          noResults.classList.remove('hidden');
+          noResults.style.opacity    = '0';
+          noResults.style.transition = 'opacity 0.38s ease';
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            noResults.style.opacity = '1';
+            setTimeout(() => { noResults.style.transition = ''; noResults.style.opacity = ''; }, 400);
+          }));
+        }, 540);
+      }
+    }
+
+    function showFileInfo(data, file) {
+      showState('uploaded');
+      const ext = getExtension(data.filename);
+      const [color, bg] = getIconColor(ext);
+      const icon = document.getElementById('file-type-icon');
+      icon.textContent = ext.slice(0, 4);
+      icon.style.background = bg + '22';
+      icon.style.color = color;
+      icon.style.border = `1px solid ${color}44`;
+      document.getElementById('info-name').textContent = data.filename;
+      document.getElementById('info-type').textContent = file.type || 'Unknown';
+      document.getElementById('info-size').textContent = formatBytes(data.size);
+      document.getElementById('info-sha256').textContent = data.sha256;
+
+      // Hide Drop ID row until scan completes
+      const dropIdEl  = document.getElementById('info-drop-id');
+      const dropIdRow = document.getElementById('drop-id-row');
+      const copyBtn   = document.getElementById('btn-copy-drop-id');
+      if (dropIdEl)  { dropIdEl.textContent = ''; dropIdEl.style.opacity = '0'; }
+      if (dropIdRow) { dropIdRow.style.display = 'none'; }
+      if (copyBtn)   { copyBtn.style.opacity = '0'; }
+
+      const scanBtn = document.getElementById('scan-btn');
+      scanBtn.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg> Scan File &amp; Upload`;
+      scanBtn.className = 'btn btn-primary';
+      scanBtn.onclick = scanFile;
+      scanBtn.style.display = '';
+
+      // Ensure reupload button is enabled for fresh uploads
+      const reUploadBtn = document.getElementById('btn-reupload');
+      if (reUploadBtn) reUploadBtn.classList.remove('btn-disabled');
+    }
+
+    function scanFile() {
+      showState('scanning');
+
+      // Always clear any previous scan progress interval first
+      if (scanIntervalId) { clearInterval(scanIntervalId); scanIntervalId = null; }
+
+      // Reset progress bar to 0 cleanly before starting
+      const scanFill = document.getElementById('scan-progress-fill');
+      const scanPct  = document.getElementById('scan-pct');
+      scanFill.style.transition = 'none';
+      scanFill.style.width = '0%';
+      scanPct.textContent = '0%';
+      // Re-enable transition after one frame so the bar animates smoothly from 0
+      requestAnimationFrame(() => { scanFill.style.transition = ''; });
+
+      let pct = 0;
+      scanIntervalId = setInterval(() => {
+        const step = pct < 60 ? 1.2 : pct < 80 ? 0.5 : pct < 90 ? 0.15 : 0;
+        pct = Math.min(90, pct + step);
+        scanFill.style.width = pct + '%';
+        scanPct.textContent = Math.floor(pct) + '%';
+      }, 3000);
+
+      fetch('/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: currentFilename })
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) {
+            clearInterval(scanIntervalId); scanIntervalId = null;
+            showState('uploaded');
+            if (data.error === 'file_not_found') {
+              // Only show "File not found" for safe uploaded files being re-scanned.
+              // For unsafe files the file was scheduled for deletion — pill already says so.
+              if (!scanResult || scanResult.is_safe) {
+                showSnack({ type: 'error', message: '<strong>File not found</strong><br>The file could not be located on the server.', duration: 5000 });
+              }
+              // For unsafe files: silently stay on uploaded state — the panel pill handles the messaging
+            } else {
+              showSnack({ type: 'error', message: `<strong>Scan error</strong><br>${data.error}`, duration: 6000 });
+            }
+            return;
+          }
+
+          clearInterval(scanIntervalId); scanIntervalId = null;
+          scanFill.style.width = '100%';
+          scanPct.textContent = '100%';
+
+          // ── Deletion timer — started ONCE per unsafe file, never reset ──────
+          // Only start if there isn't already a timer running (handles re-scan case)
+          if (!data.is_safe && deleteTimer === null) {
+            const deletedAt = Date.now() + 180_000;
+
+            // Callback fires at T+180s
+            deleteTimer = setTimeout(() => {
+              deleteTimer = null; // mark as expired
+
+              // Mark the live result object as deleted so any future re-render is correct
+              if (liveScanResult) liveScanResult._deleted = true;
+
+              // Disable Re-Scan button in results panel
+              const reScanBtn = document.getElementById('btn-rescan');
+              if (reScanBtn) reScanBtn.classList.add('btn-disabled');
+
+              // Disable scan-btn (upload area Re-Scan)
+              const scanBtnEl = document.getElementById('scan-btn');
+              if (scanBtnEl) scanBtnEl.classList.add('btn-disabled');
+
+              // Disable Re-upload button
+              const reUploadBtn = document.getElementById('btn-reupload');
+              if (reUploadBtn) { reUploadBtn.style.transition = 'opacity 0.5s ease'; reUploadBtn.classList.add('btn-disabled'); }
+
+              // Flip warning pill → "File has been deleted"
+              // Update regardless of whether a live or search result is currently shown
+              _setWarningPillDeleted();
+
+            }, 180_000);
+          }
+
+          setTimeout(() => {
+            liveScanResult = data;
+            scanResult     = data;
+
+            const panel = document.getElementById('scan-results-panel');
+            if (!panel.classList.contains('hidden')) {
+              crossDissolvePanel(data);
+            } else {
+              showScanResults(data);
+            }
+          }, 400);
+
+          showState('uploaded');
+          const scanBtnEl = document.getElementById('scan-btn');
+          scanBtnEl.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg> Re-Scan`;
+          scanBtnEl.className = 'btn btn-primary';
+          scanBtnEl.onclick   = reScan;
+
+          // Show "Scanning Complete"
+          const completeTxt = document.getElementById('scan-complete-text');
+          completeTxt.classList.remove('hidden');
+          completeTxt.style.opacity = '0';
+          requestAnimationFrame(() => {
+            completeTxt.style.transition = 'opacity 0.4s ease';
+            completeTxt.style.opacity = '1';
+          });
+
+          // Enable Show Result button
+          document.getElementById('btn-show-result').classList.remove('btn-disabled');
+        })
+        .catch(() => {
+          clearInterval(scanIntervalId); scanIntervalId = null;
+          showSnack({ type: 'error', message: '<strong>Network error</strong><br>Could not reach the server during scan.', duration: 6000 });
+          showState('uploaded');
+        });
+    }
+
+    function reScan() {
+      // For a searched result, use that result's filename; otherwise use the upload-area filename
+      const targetFilename = (scanResult?._fromSearch && scanResult?.filename)
+                             ? scanResult.filename
+                             : currentFilename;
+      if (!targetFilename) return;
+
+      // For unsafe/malicious files: always show the confirmation snackbar
+      // (deleteTimer active = file still pending deletion; deleteTimer null = already expired but btn-rescan disabled)
+      const isUnsafe = scanResult && !scanResult.is_safe;
+      if (deleteTimer !== null || isUnsafe) {
+        showSnack({
+          type: 'warn',
+          message: `<strong>File will be deleted in 3 minutes</strong><br>The unsafe file is scheduled for deletion. Re-scanning will not prevent deletion.`,
+          buttonLabel: 'Re-scan Anyway',
+          duration: 0,
+          onButton: () => _doReScan(targetFilename)
+        });
+        return;
+      }
+
+      _doReScan(targetFilename);
+    }
+
+    function _doReScan(targetFilename) {
+      // NOTE: we deliberately do NOT clear deleteTimer here.
+      // The 180s countdown started at first scan and must not be reset.
+
+      // Ensure currentFilename is set so scanFile() can use it
+      currentFilename = targetFilename;
+
+      const scanBtnEl = document.getElementById('scan-btn');
+      if (scanBtnEl) scanBtnEl.classList.remove('btn-disabled');
+      const showResultBtn = document.getElementById('btn-show-result');
+      if (showResultBtn) showResultBtn.classList.add('btn-disabled');
+      const completeTxt = document.getElementById('scan-complete-text');
+      if (completeTxt) { completeTxt.classList.add('hidden'); completeTxt.style.opacity = '0'; }
+
+      // Scroll smoothly to the upload/scanning section first, then start scan
+      const uploadSection = document.getElementById('upload');
+      if (uploadSection) {
+        uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Brief delay so the scroll is visible before the state switches to scanning
+        setTimeout(() => scanFile(), 350);
+      } else {
+        scanFile();
+      }
+    }
+
+    // Flip the warning pill in the results panel to "has been deleted"
+    function _setWarningPillDeleted() {
+      const w = document.getElementById('scan-status-warning');
+      if (!w || w.classList.contains('hidden')) return;
+      w.style.transition = 'opacity 0.3s ease';
+      w.style.opacity = '0';
+      setTimeout(() => {
+        w.innerHTML = `<svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>File has been deleted`;
+        w.classList.add('fade-in-content');
+        w.style.opacity = '1';
+        setTimeout(() => w.classList.remove('fade-in-content'), 400);
+      }, 320);
+    }
+
+    function showScanResults(data) {
+      const panel     = document.getElementById('scan-results-panel');
+      const noResults = document.getElementById('no-results');
+
+      // Populate all fields
+      _populatePanelFields(data);
+
+      // If panel is already visible, just re-render in place (re-scan case) — crossDissolve handles animated case
+      if (!panel.classList.contains('hidden')) return;
+
+      // Capture current no-results height to animate FROM it (seamless blend)
+      const fromH = noResults.offsetHeight;
+
+      // Fade out no-results text, then expand panel from same height
+      noResults.style.transition = 'opacity 0.25s ease';
+      noResults.style.opacity    = '0';
+
+      setTimeout(() => {
+        noResults.classList.add('hidden');
+        noResults.style.opacity    = '';
+        noResults.style.transition = '';
+
+        panel.classList.remove('hidden');
+        panel.style.overflow   = 'hidden';
+        panel.style.maxHeight  = fromH + 'px';
+        panel.style.opacity    = '0';
+        panel.style.transition = 'none';
+        panel.offsetHeight;
+
+        panel.style.transition = 'opacity 0.42s ease, max-height 0.55s cubic-bezier(0.4,0,0.2,1)';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          panel.style.opacity   = '1';
+          panel.style.maxHeight = (panel.scrollHeight + 800) + 'px';
+          setTimeout(() => {
+            panel.style.transition = '';
+            panel.style.maxHeight  = '';
+            panel.style.overflow   = '';
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 580);
+        }));
+      }, 270);
+    }
+
+    function riskBadgeHTML(badge) {
+      const colors = { Low: '#22c55e', Medium: '#f59e0b', High: '#ef4444' };
+      const color = colors[badge] || '#94a3b8';
+      return `<span style="background:${color}20;color:${color};border:1px solid ${color}40;" class="px-2 py-0.5 rounded-full text-xs font-semibold">${badge}</span>`;
+    }
+
+    // Cross-dissolve: fade out current panel content, swap data, fade back in — no resize
+    function crossDissolvePanel(data) {
+      const panel = document.getElementById('scan-results-panel');
+
+      // Fade out all inner content
+      panel.style.transition = 'opacity 0.3s ease';
+      panel.style.opacity    = '0';
+
+      setTimeout(() => {
+        // Swap all field values silently while invisible
+        _populatePanelFields(data);
+
+        // Fade back in
+        panel.style.transition = 'opacity 0.38s ease';
+        panel.style.opacity    = '1';
+        setTimeout(() => {
+          panel.style.transition = '';
+          panel.style.opacity    = '';
+        }, 400);
+      }, 320);
+    }
+
+    // Populate all panel DOM fields from data (no animation, no show/hide logic)
+    function _populatePanelFields(data) {
+      const bar     = document.getElementById('scan-status-bar');
+      const icon    = document.getElementById('scan-status-icon');
+      const text    = document.getElementById('scan-status-text');
+      const warning = document.getElementById('scan-status-warning');
+      const panel   = document.getElementById('scan-results-panel');
+
+      const fnEl = document.getElementById('r-file-name');
+      if (fnEl) fnEl.textContent = data.filename || currentFilename || '';
+
+      warning.className  = 'hidden';
+      warning.style.cssText = '';
+      warning.innerHTML  = '';
+      panel.classList.remove('result-unsafe');
+
+      if (data.is_safe) {
+        bar.className = 'status-bar status-safe';
+        icon.innerHTML = `<svg width="32" height="36" viewBox="0 0 32 36" fill="none"><path d="M16 2.5Q17 2 18.5 2.9L28.5 8.7Q30 9.6 30 11.3V24.7Q30 26.4 28.5 27.3L18.5 33.1Q17 34 16 33.5Q15 34 13.5 33.1L3.5 27.3Q2 26.4 2 24.7V11.3Q2 9.6 3.5 8.7L13.5 2.9Q15 2 16 2.5Z" fill="#166534" fill-opacity="0.25" stroke="#22c55e" stroke-width="1.5"/><path stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M10 18l4.5 4.5 7.5-9"/></svg>`;
+        text.textContent = 'SAFE — Uploaded to Server';
+      } else {
+        bar.className = 'status-bar status-unsafe';
+        panel.classList.add('result-unsafe');
+        icon.innerHTML = `<svg width="32" height="36" viewBox="0 0 32 36" fill="none"><path d="M16 2.5Q17 2 18.5 2.9L28.5 8.7Q30 9.6 30 11.3V24.7Q30 26.4 28.5 27.3L18.5 33.1Q17 34 16 33.5Q15 34 13.5 33.1L3.5 27.3Q2 26.4 2 24.7V11.3Q2 9.6 3.5 8.7L13.5 2.9Q15 2 16 2.5Z" fill="#7f1d1d" fill-opacity="0.25" stroke="#ef4444" stroke-width="1.5"/><path stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M11.5 13.5l9 9M20.5 13.5l-9 9"/></svg>`;
+        text.textContent = 'UNSAFE — Error Uploading File';
+
+        warning.className = 'flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full';
+        warning.style.cssText = 'background:#7f1d1d33;color:#f87171;border:1px solid #ef444430;flex-shrink:0;';
+
+        if (data._deleted) {
+          // Confirmed deleted (timer fired, or searched after deletion)
+          warning.innerHTML = `<svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>File has been deleted`;
+        } else {
+          // Either live scan (pending deletion) or searched result still within window
+          warning.innerHTML = `<svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>File will be deleted in 3 minutes`;
+        }
+      }
+
+      document.getElementById('r-threat-status').textContent   = data.threat_status;
+      document.getElementById('r-risk-score').textContent      = data.risk_score + ' / 100';
+      document.getElementById('r-risk-badge').innerHTML        = riskBadgeHTML(data.risk_badge);
+      document.getElementById('r-detection-ratio').textContent = data.detection_ratio + ' flagged';
+      document.getElementById('r-engines').textContent         = data.engines_scanned;
+      document.getElementById('r-malware-sig').textContent     = data.malware_signature;
+      document.getElementById('r-threat-cat').textContent      = data.threat_category;
+
+      const flaggedEl = document.getElementById('r-flagged');
+      flaggedEl.innerHTML = data.flagged_engines?.length
+        ? data.flagged_engines.map(e => `<span class="inline-block px-2 py-0.5 mr-1 mb-1 rounded text-xs" style="background:var(--red-dim);color:var(--red);">${e}</span>`).join('')
+        : '<span style="color:var(--green)">None</span>';
+
+      document.getElementById('r-file-type').textContent  = data.file_type;
+      document.getElementById('r-file-size').textContent  = formatBytes(data.file_size);
+      document.getElementById('r-mime').textContent       = data.mime_type;
+      document.getElementById('r-sha256').textContent     = data.sha256;
+      document.getElementById('r-md5').textContent        = data.md5;
+      document.getElementById('r-dig-sig').textContent    = data.digital_signature;
+      document.getElementById('r-publisher').textContent  = data.publisher;
+      document.getElementById('r-cert').textContent       = data.cert_validity;
+      document.getElementById('r-created').textContent    = data.file_created;
+      document.getElementById('r-modified').textContent   = data.last_modified;
+      document.getElementById('r-timestamp').textContent  = data.scan_timestamp;
+      document.getElementById('r-upload-id').textContent  = data.upload_id;
+
+      // Drop ID — show in upload area only for live (non-search) results, only on first assignment
+      const dropIdEl  = document.getElementById('info-drop-id');
+      const dropIdRow = document.getElementById('drop-id-row');
+      if (dropIdEl && dropIdRow && data.upload_id && !data._fromSearch) {
+        if (dropIdEl.textContent !== data.upload_id) {
+          dropIdRow.style.display = 'flex';
+          dropIdEl.style.opacity  = '0';
+          dropIdEl.textContent    = data.upload_id;
+          const copyBtn = document.getElementById('btn-copy-drop-id');
+          if (copyBtn) copyBtn.style.opacity = '0';
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            dropIdEl.style.opacity = '1';
+            if (copyBtn) copyBtn.style.opacity = '1';
+          }));
+        }
+      }
+
+      // Button states — NO timer logic here, timer is owned by scanFile()
+      const dlBtn     = document.getElementById('btn-download-file');
+      const reScanBtn = document.getElementById('btn-rescan');
+
+      if (data.is_safe) {
+        dlBtn.classList.remove('btn-disabled');
+        reScanBtn.classList.remove('btn-disabled');
+      } else {
+        dlBtn.classList.add('btn-disabled');
+        if (data._deleted) {
+          reScanBtn.classList.add('btn-disabled');
+        } else {
+          reScanBtn.classList.remove('btn-disabled');
+        }
+      }
+
+      // Close buttons — always visible so user can collapse the panel
+      const closeBtn     = document.getElementById('btn-close-result');
+      const closeBtnSafe = document.getElementById('btn-close-result-safe');
+      closeBtn.style.transition     = 'opacity 0.25s ease';
+      closeBtnSafe.style.transition = 'opacity 0.25s ease';
+      closeBtn.style.opacity     = '0';
+      closeBtnSafe.style.opacity = '0';
+      setTimeout(() => {
+        closeBtn.style.display     = 'none';
+        closeBtnSafe.style.display = 'none';
+        const btn = data.is_safe ? closeBtnSafe : closeBtn;
+        btn.style.display = 'inline-flex';
+        requestAnimationFrame(() => { btn.style.opacity = '1'; });
+      }, 260);
+    }
+
+    function showResultPanel() {
+      if (!liveScanResult) return;   // nothing ever scanned
+      const panel     = document.getElementById('scan-results-panel');
+
+      // Panel already visible — cross-dissolve to live scan result if different
+      if (!panel.classList.contains('hidden')) {
+        if (scanResult !== liveScanResult) {
+          scanResult = liveScanResult;
+          crossDissolvePanel(liveScanResult);
+        } else {
+          panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        return;
+      }
+
+      // Panel hidden (was closed) — expand it with live scan result
+      scanResult = liveScanResult;
+      showScanResults(liveScanResult);
+    }
+
+    function closeSearchResult() {
+      ['btn-close-result', 'btn-close-result-safe'].forEach(id => {
+        const btn = document.getElementById(id);
+        btn.style.transition = 'opacity 0.25s ease';
+        btn.style.opacity    = '0';
+        setTimeout(() => { btn.style.display = 'none'; }, 260);
+      });
+
+      const panel     = document.getElementById('scan-results-panel');
+      const noResults = document.getElementById('no-results');
+      const isSearch  = scanResult && scanResult._fromSearch;
+
+      // If a live scan result exists and we're closing a search result,
+      // cross-dissolve to the live result instead of collapsing
+      if (isSearch && liveScanResult) {
+        scanResult = liveScanResult;
+        crossDissolvePanel(liveScanResult);
+        // If the file was deleted while the search result was open, flip the pill
+        // after the dissolve animation (crossDissolve takes ~500ms)
+        if (liveScanResult._deleted) {
+          setTimeout(() => _setWarningPillDeleted(), 520);
+        }
+        return;
+      }
+
+      // Otherwise: collapse to no-results height, then show no-results card
+      noResults.style.visibility = 'hidden';
+      noResults.classList.remove('hidden');
+      const targetH = noResults.offsetHeight;
+      noResults.classList.add('hidden');
+      noResults.style.visibility = '';
+
+      const fullH = panel.scrollHeight;
+      panel.style.overflow  = 'hidden';
+      panel.style.maxHeight = fullH + 'px';
+      panel.offsetHeight;
+
+      panel.style.transition = 'opacity 0.38s ease, max-height 0.52s cubic-bezier(0.4,0,0.2,1)';
+      panel.style.opacity    = '0';
+      panel.style.maxHeight  = targetH + 'px';
+
+      setTimeout(() => {
+        panel.classList.add('hidden');
+        panel.style.opacity    = '';
+        panel.style.maxHeight  = '';
+        panel.style.transition = '';
+        panel.style.overflow   = '';
+        panel.classList.remove('result-unsafe');
+
+        noResults.classList.remove('hidden');
+        noResults.style.opacity    = '0';
+        noResults.style.transition = 'opacity 0.38s ease';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          noResults.style.opacity = '1';
+          setTimeout(() => { noResults.style.transition = ''; noResults.style.opacity = ''; }, 400);
+        }));
+
+        // Only null out scanResult — liveScanResult persists for Show Result
+        scanResult = null;
+      }, 540);
+    }
+
+    // Escape key: close search modal (any focused element) + close search result panel
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') return;
+      if (searchModal.classList.contains('open')) {
+        searchModal.classList.remove('open');
+        searchInput.value = '';
+        searchInput.blur();
+        return;
+      }
+      const closeBtn = document.getElementById('btn-close-result');
+      const closeBtnSafe = document.getElementById('btn-close-result-safe');
+      const unsafeVisible = closeBtn.style.display !== 'none' && closeBtn.style.display !== '';
+      const safeVisible = closeBtnSafe.style.display !== 'none' && closeBtnSafe.style.display !== '';
+      if (unsafeVisible || safeVisible) {
+        closeSearchResult();
+      }
+    });
+
+    function _doCopyDropId(id, btnEl) {
+      if (!id) return;
+      const COPY_SVG  = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
+      const CHECK_SVG = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
+      navigator.clipboard.writeText(id).then(() => {
+        showSnack({
+          type: 'success',
+          message: `<strong>Copied!</strong><br>Drop ID: <span style="font-family:'Space Mono',monospace;letter-spacing:0.05em;">${id}</span>`,
+          duration: 3000
+        });
+        if (btnEl) {
+          btnEl.innerHTML = CHECK_SVG;
+          btnEl.style.background   = 'rgba(0,229,176,0.25)';
+          btnEl.style.borderColor  = 'rgba(0,229,176,0.7)';
+          setTimeout(() => {
+            btnEl.innerHTML = COPY_SVG;
+            btnEl.style.background  = 'rgba(0,229,176,0.08)';
+            btnEl.style.borderColor = 'rgba(0,229,176,0.3)';
+          }, 1500);
+        }
+      }).catch(() => {
+        showSnack({ type: 'error', message: 'Failed to copy Drop ID.', duration: 3000 });
+      });
+    }
+
+    // Upload/scan area — copy button on the right
+    function copyDropId() {
+      const id = document.getElementById('info-drop-id')?.textContent?.trim();
+      _doCopyDropId(id, document.getElementById('btn-copy-drop-id'));
+    }
+
+    // Results panel — copy button on the left
+    function copyResultDropId() {
+      const id = document.getElementById('r-upload-id')?.textContent?.trim();
+      _doCopyDropId(id, document.getElementById('btn-copy-result-drop-id'));
+    }
+
+    function downloadFile() {
+      // For a searched result currentFilename may be null — fall back to scanResult.filename
+      const fname = currentFilename || (scanResult?.is_safe ? scanResult.filename : null);
+      if (!fname || !scanResult?.is_safe) return;
+      const url = '/download/' + encodeURIComponent(fname);
+      fetch(url, { method: 'GET' })
+        .then(r => {
+          if (r.ok) {
+            window.location.href = url;
+          } else {
+            r.json().then(body => {
+              if (body.error === 'file_not_found') {
+                showSnack({ type: 'error', message: '<strong>File not found</strong><br>The uploaded file could not be located on the server.', duration: 5000 });
+              } else {
+                showSnack({ type: 'error', message: `<strong>Download failed</strong><br>${body.error || 'Unknown error'}`, duration: 5000 });
+              }
+            }).catch(() => {
+              showSnack({ type: 'error', message: '<strong>Download failed</strong><br>Unexpected server response.', duration: 5000 });
+            });
+          }
+        })
+        .catch(() => {
+          showSnack({ type: 'error', message: '<strong>Network error</strong><br>Could not reach the server.', duration: 5000 });
+        });
+    }
+
+    function downloadReport() {
+      if (!scanResult?.upload_id) return;
+      window.location.href = '/report/' + encodeURIComponent(scanResult.upload_id);
+    }
+  </script>
+
+  <script>
+    const searchInput      = document.getElementById('search-input');
+    const searchModal      = document.getElementById('search-modal');
+    const searchModalBody  = document.getElementById('search-modal-body');
+    const searchModalQuery = document.getElementById('search-modal-query');
+    let searchTimer = null;
+
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      const q = searchInput.value.trim();
+      if (!q) { closeSearchModal(); return; }
+      searchTimer = setTimeout(() => doSearch(q), 350);
+    });
+
+    function doSearch(query) {
+      fetch('/search?q=' + encodeURIComponent(query))
+        .then(r => r.json())
+        .then(data => {
+          searchModalQuery.textContent = 'Results for: ' + query;
+          if (!data.results || data.results.length === 0) {
+            searchModalBody.innerHTML = `<div class="px-5 py-8 text-center text-sm" style="color:var(--muted);">No scan found for this Drop ID.</div>`;
+          } else {
+            searchModalBody.innerHTML = data.results.map(r => `
+              <div class="search-modal-result" onclick="loadSearchResult('${r.upload_id}')">
+                <div class="flex items-center justify-between gap-3 mb-1">
+                  <span class="font-semibold text-sm truncate">${r.filename}</span>
+                  <span class="text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-semibold"
+                    style="background:${r.is_safe ? 'var(--green-dim)' : 'var(--red-dim)'};color:${r.is_safe ? 'var(--green)' : 'var(--red)'};">
+                    ${r.is_safe ? 'SAFE' : 'UNSAFE'}
+                  </span>
+                </div>
+                <div class="text-xs mono" style="color:var(--accent);letter-spacing:0.04em;">${r.upload_id}</div>
+                <div class="text-xs mt-1" style="color:var(--muted);">${r.scan_timestamp} · ${r.threat_status} · Risk: ${r.risk_badge}</div>
+              </div>`).join('');
+          }
+          searchModal.classList.add('open');
+        })
+        .catch(() => {
+          searchModalBody.innerHTML = `<div class="px-5 py-8 text-center text-sm" style="color:var(--red);">Search failed. Is the server running?</div>`;
+          searchModal.classList.add('open');
+        });
+    }
+
+    function closeSearchModal(e) {
+      if (e && e.target !== searchModal) return;
+      searchModal.classList.remove('open');
+    }
+
+    function loadSearchResult(uploadId) {
+      fetch('/search?q=' + encodeURIComponent(uploadId))
+        .then(r => r.json())
+        .then(async data => {
+          if (!data.results?.length) return;
+          const r = data.results.find(x => x.upload_id === uploadId) || data.results[0];
+          r._fromSearch = true;
+
+          // For unsafe results, check real-time deletion status from backend
+          if (!r.is_safe && r.filename) {
+            try {
+              const st = await fetch('/file-status?filename=' + encodeURIComponent(r.filename)).then(x => x.json());
+              if (st.pending) {
+                // Still within the 3-minute window — show "will be deleted"
+                r._deleted = false;
+              } else {
+                // File is already gone (or was never pending — old historical result)
+                r._deleted = true;
+              }
+            } catch {
+              r._deleted = true; // safe default
+            }
+          }
+
+          scanResult = r;
+          searchModal.classList.remove('open');
+          searchInput.value = '';
+
+          const panel = document.getElementById('scan-results-panel');
+          if (!panel.classList.contains('hidden')) {
+            crossDissolvePanel(r);
+          } else {
+            showScanResults(r);
+          }
+          document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+        });
+    }
+
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobile-menu');
+      const btn  = document.getElementById('hamburger-btn');
+      const isOpen = menu.classList.toggle('open');
+      btn.classList.toggle('is-open', isOpen);
+    }
+
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#hamburger-btn') && !e.target.closest('#mobile-menu')) {
+        document.getElementById('mobile-menu').classList.remove('open');
+        document.getElementById('hamburger-btn').classList.remove('is-open');
+      }
+    });
+
+    document.addEventListener('input', e => {
+      if (e.target.id === 'search-input-mobile') {
+        clearTimeout(searchTimer);
+        const q = e.target.value.trim();
+        if (!q) { closeSearchModal(); return; }
+        searchTimer = setTimeout(() => doSearch(q), 350);
+      }
+    });
+
+    // ---- SYSTEM STATUS CHECK ----
+    function checkSystemStatus() {
+      fetch('/search?q=__ping__')
+        .then(() => {
+          const pill = document.getElementById('system-status-pill');
+          if (pill.classList.contains('online')) return; // already correct, no flash
+          pill.style.opacity = '0';
+          setTimeout(() => {
+            pill.className = 'status-pill online mt-2';
+            document.getElementById('system-status-text').textContent = 'All Systems Operational';
+            pill.style.opacity = '1';
+          }, 300);
+        })
+        .catch(() => {
+          const pill = document.getElementById('system-status-pill');
+          if (pill.classList.contains('offline')) return;
+          pill.style.opacity = '0';
+          setTimeout(() => {
+            pill.className = 'status-pill offline mt-2';
+            document.getElementById('system-status-text').textContent = 'All Systems Offline';
+            pill.style.opacity = '1';
+          }, 300);
+        });
+    }
+    checkSystemStatus();
+    setInterval(checkSystemStatus, 10000);
+  </script>
+</body>
+</html>
