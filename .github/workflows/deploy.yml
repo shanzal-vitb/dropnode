@@ -12,30 +12,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-      - name: Upload files
+      - name: Create venv and install dependencies
         run: |
-          scp -i ~/.ssh/id_rsa app.py index.html \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install --upgrade -r requirements.txt
 
-      - name: Install & restart
-        run: |
-          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'ENDSSH'
-            cd ${{ secrets.DEPLOY_PATH }}
-            mkdir -p cache uploads logs
-            python3 -m venv .venv
-            .venv/bin/pip install -q flask werkzeug requests gunicorn
-            echo "VIRUSTOTAL_API_KEY=${{ secrets.VIRUSTOTAL_API_KEY }}" > .env
-            pkill -f "gunicorn.*app:app" || true
-            sleep 1
-            nohup .venv/bin/gunicorn --bind 0.0.0.0:5000 --workers 2 \
-              --access-logfile logs/access.log --error-logfile logs/error.log \
-              app:app > /dev/null 2>&1 &
-            echo "Done"
-          ENDSSH
+      - name: Run app
+        run: .venv/bin/python app.py
