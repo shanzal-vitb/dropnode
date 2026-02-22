@@ -3,24 +3,9 @@ name: Deploy DropNode
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Create venv and install dependencies
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install --upgrade -r requirements.txt
-
-      - name: Run app
-        run: .venv/bin/python app.py
+      - run: echo "Deploy skipped. Hosting on Render.com."
