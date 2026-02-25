@@ -325,7 +325,7 @@ Scan results are stored in `dropnode.db` (SQLite). The `scan_results` table sche
 
 - `[NEW]` **#14** — Separate `demo/` folder created inside the V1.1 production directory:
   - **#21** — Warning banner about demo usage and public file exposure risk.
-  - **#22** — Build chip: `Build: Beta, V1.1 - 240226_demo`
+  - **#22** — Build chip: `Build: Beta, V1.1 - 250226_demo`
 - `[UPD]` Demo warning committed to the `dropnode` main branch alongside all V1.1 changes.
 
 ---
