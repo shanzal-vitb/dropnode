@@ -13,7 +13,7 @@ from flask import Flask, request, jsonify, send_file, Response, g
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 650 * 1024 * 1024  # 650MB
+app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32MB
 
 CACHE_FOLDER  = 'cache'
 UPLOAD_FOLDER = 'uploads'
