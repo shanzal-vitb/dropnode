@@ -6,9 +6,10 @@ import time
 import sqlite3
 import random
 import string
+import shutil
 import requests
 from datetime import datetime, timezone
-from flask import Flask, request, jsonify, send_file, render_template, Response, g
+from flask import Flask, request, jsonify, send_file, Response, g
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -17,7 +18,20 @@ app.config['MAX_CONTENT_LENGTH'] = 650 * 1024 * 1024  # 650MB
 CACHE_FOLDER  = 'cache'
 UPLOAD_FOLDER = 'uploads'
 DB_PATH       = 'dropnode.db'
-VIRUSTOTAL_API_KEY = os.environ.get('VIRUSTOTAL_API_KEY')
+_API_KEY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.api_key')
+
+def _load_api_key() -> str:
+    """Load API key: disk file → env var → hardcoded default."""
+    if os.path.exists(_API_KEY_FILE):
+        try:
+            key = open(_API_KEY_FILE).read().strip()
+            if key:
+                return key
+        except OSError:
+            pass
+    return os.environ.get('VIRUSTOTAL_API_KEY', '66926d0a094182e22184a8f4c4a594158e12deacc68ee7a831164dfa6d7ad77d')
+
+VIRUSTOTAL_API_KEY = _load_api_key()
 VT_API_URL    = 'https://www.virustotal.com/api/v3'
 
 os.makedirs(CACHE_FOLDER,  exist_ok=True)
@@ -90,12 +104,40 @@ def init_db():
                 file_created      TEXT,
                 last_modified     TEXT,
                 scan_timestamp    TEXT,
+                file_deleted      INTEGER NOT NULL DEFAULT 0,
                 created_at        TEXT DEFAULT (datetime('now'))
             )
         ''')
+        # Migrate existing DBs that don't yet have file_deleted column
+        try:
+            con.execute('ALTER TABLE scan_results ADD COLUMN file_deleted INTEGER NOT NULL DEFAULT 0')
+        except Exception:
+            pass
         con.commit()
 
 init_db()
+
+
+# ── STARTUP CACHE SWEEP ───────────────────────────────────────────────────────
+# On server start, delete any orphaned files left in cache/ that are NOT
+# part of an active pending-deletion timer (e.g. files stranded by a page
+# reload while a scan was still running, or by a previous crash).
+def _startup_cache_sweep():
+    """Delete cache files that have no associated pending-deletion entry."""
+    try:
+        for fname in os.listdir(CACHE_FOLDER):
+            fpath = os.path.abspath(os.path.join(CACHE_FOLDER, fname))
+            with _del_lock:
+                is_registered = fpath in _pending_deletions
+            if not is_registered:
+                try:
+                    os.remove(fpath)
+                except OSError:
+                    pass
+    except OSError:
+        pass
+
+_startup_cache_sweep()
 
 
 def save_result(result: dict):
@@ -106,21 +148,23 @@ def save_result(result: dict):
                 risk_badge, detection_ratio, engines_scanned, malware_signature,
                 threat_category, flagged_engines, file_type, file_size, mime_type,
                 sha256, md5, digital_signature, publisher, cert_validity,
-                file_created, last_modified, scan_timestamp
+                file_created, last_modified, scan_timestamp, file_deleted
             ) VALUES (
                 :upload_id, :filename, :is_safe, :threat_status, :risk_score,
                 :risk_badge, :detection_ratio, :engines_scanned, :malware_signature,
                 :threat_category, :flagged_engines, :file_type, :file_size, :mime_type,
                 :sha256, :md5, :digital_signature, :publisher, :cert_validity,
-                :file_created, :last_modified, :scan_timestamp
+                :file_created, :last_modified, :scan_timestamp, :file_deleted
             )
-        ''', {**result, 'flagged_engines': json.dumps(result.get('flagged_engines', []))})
+        ''', {**result, 'flagged_engines': json.dumps(result.get('flagged_engines', [])),
+               'file_deleted': result.get('file_deleted', 0)})
         con.commit()
 
 
 def row_to_dict(row):
     d = dict(row)
-    d['is_safe'] = bool(d['is_safe'])
+    d['is_safe']      = bool(d['is_safe'])
+    d['file_deleted'] = bool(d.get('file_deleted', 0))
     try:
         d['flagged_engines'] = json.loads(d.get('flagged_engines') or '[]')
     except Exception:
@@ -141,7 +185,6 @@ def move_to_uploads(cache_path: str, filename: str) -> bool:
         return True
     except OSError:
         # Fallback: copy then delete (handles cross-device moves)
-        import shutil
         try:
             shutil.copy2(cache_path, dest)
             os.remove(cache_path)
@@ -202,32 +245,38 @@ def build_report_html(result: dict) -> str:
 <head>
 <meta charset="UTF-8">
 <title>DropNode Drop Report — {result['filename']}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Google+Sans+Flex:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 <style>
+  /* ── CUSTOM FONTS (matching main webapp) ── */
+  @font-face{{font-family:'SamsungSharpSans';src:url('https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/fonts/SamsungSharpSans-Bold.otf') format('opentype');font-weight:700;font-display:swap}}
+  @font-face{{font-family:'PPSupplySans';src:url('https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/fonts/PPSupplySans-Ultralight.otf') format('opentype');font-weight:200;font-display:swap}}
+  @font-face{{font-family:'PPSupplySans';src:url('https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/fonts/PPSupplySans-Regular.otf') format('opentype');font-weight:400;font-display:swap}}
   *{{box-sizing:border-box;margin:0;padding:0}}
-  body{{font-family:'Segoe UI',system-ui,sans-serif;background:#0f0f0f;color:#e5e5e5;padding:40px}}
+  body{{font-family:'Google Sans Flex',system-ui,sans-serif;font-weight:400;background:#0f0f0f;color:#e5e5e5;padding:40px}}
   .container{{max-width:860px;margin:0 auto}}
   .header{{border-bottom:2px solid #222;padding-bottom:28px;margin-bottom:32px}}
   .header-brand{{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px}}
-  .brand-dropnode{{font-family:'Arial Black',system-ui,sans-serif;font-weight:900;font-size:28px;letter-spacing:-0.5px;color:#00e5b0;line-height:1}}
+  .brand-dropnode{{font-family:'SamsungSharpSans','Arial Black',system-ui,sans-serif;font-weight:700;font-size:28px;letter-spacing:-0.5px;color:#00e5b0;line-height:1}}
   .brand-dot{{color:#fff;margin:0 6px;font-size:24px}}
-  .brand-onehackers{{font-size:26px;font-weight:300;background:linear-gradient(90deg,#38BDF8,#818CF8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}}
-  .brand-onehackers strong{{font-weight:500}}
+  .brand-onehackers{{font-family:'PPSupplySans',system-ui,sans-serif;font-size:26px;font-weight:200;background:linear-gradient(90deg,#38BDF8,#818CF8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}}
+  .brand-onehackers strong{{font-weight:400}}
   .header-file{{margin-top:4px}}
-  .filename{{font-size:36px;font-weight:700;letter-spacing:-1px;color:#f0f0f0;line-height:1.15;word-break:break-all;margin-bottom:12px}}
+  .filename{{font-family:'Google Sans Flex',system-ui,sans-serif;font-size:36px;font-weight:700;letter-spacing:-0.5px;color:#f0f0f0;line-height:1.15;word-break:break-all;margin-bottom:12px}}
   .badge{{display:inline-block;padding:6px 14px;border-radius:999px;font-size:13px;font-weight:600;background:{safe_color}22;color:{safe_color};border:1px solid {safe_color}44}}
   .section{{margin-bottom:28px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:24px}}
-  h2{{font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:16px}}
+  h2{{font-family:'Google Sans Flex',system-ui,sans-serif;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:#888;margin-bottom:16px}}
   .row{{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #2a2a2a;font-size:14px}}
   .row:last-child{{border-bottom:none}}
-  .label{{color:#888}}
-  .value{{color:#e5e5e5;font-weight:500;max-width:60%;text-align:right;word-break:break-all}}
-  .drop-id{{font-family:monospace;font-size:15px;font-weight:700;letter-spacing:0.12em;color:#00e5b0}}
+  .label{{color:#888;font-weight:400}}
+  .value{{color:#e5e5e5;font-weight:400;max-width:60%;text-align:right;word-break:break-all}}
+  .drop-id{{font-family:'Space Mono',monospace;font-size:15px;font-weight:700;letter-spacing:0.12em;color:#00e5b0}}
   .copy-btn{{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;border:1px solid rgba(0,229,176,0.3);background:rgba(0,229,176,0.08);color:#00e5b0;cursor:pointer;transition:background 0.15s,border-color 0.15s;vertical-align:middle;margin-right:8px;flex-shrink:0}}
   .copy-btn:hover{{background:rgba(0,229,176,0.2);border-color:rgba(0,229,176,0.6)}}
-  #snack{{position:fixed;bottom:24px;right:24px;background:#001a0e;border:1px solid rgba(34,197,94,0.35);color:#4ade80;padding:12px 18px;border-radius:10px;font-size:13px;font-family:'Segoe UI',system-ui,sans-serif;box-shadow:0 8px 32px rgba(0,0,0,0.5);opacity:0;transform:translateY(8px);transition:opacity 0.25s ease,transform 0.25s ease;pointer-events:none;max-width:360px;line-height:1.5}}
+  #snack{{position:fixed;bottom:24px;right:24px;background:#001a0e;border:1px solid rgba(34,197,94,0.35);color:#4ade80;padding:12px 18px;border-radius:10px;font-size:13px;font-family:'Google Sans Flex',system-ui,sans-serif;box-shadow:0 8px 32px rgba(0,0,0,0.5);opacity:0;transform:translateY(8px);transition:opacity 0.25s ease,transform 0.25s ease;pointer-events:none;max-width:360px;line-height:1.5}}
   .flagged{{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:12px;margin-top:8px}}
   .flagged li{{font-size:13px;color:#f87171;padding:3px 0;list-style:none;padding-left:12px}}
-  .footer{{text-align:center;color:#555;font-size:12px;margin-top:40px;padding-top:20px;border-top:1px solid #2a2a2a}}
+  .footer{{text-align:center;color:#555;font-size:12px;margin-top:40px;padding-top:20px;border-top:1px solid #2a2a2a;font-family:'Google Sans Flex',system-ui,sans-serif}}
 </style>
 </head>
 <body>
@@ -235,7 +284,7 @@ def build_report_html(result: dict) -> str:
   <div class="header">
     <!-- Top row: dropnode left, OneHackers right -->
     <div class="header-brand">
-      <a href="https://dropnode.onehackers.dev" target="_blank" style="text-decoration:none;" class="brand-dropnode">dropnode</a>
+      <a href="https://dropnode.up.railway.app/" target="_blank" style="text-decoration:none;" class="brand-dropnode">dropnode</a>
       <span class="brand-onehackers"><span style="font-weight:200;">0ne</span><strong>Hackers</strong></span>
     </div>
     <!-- Filename + badge below both logos -->
@@ -293,8 +342,8 @@ def build_report_html(result: dict) -> str:
   </div>
 
   <div class="footer">
-    <p>Generated by <a href="https://dropnode.onehackers.dev" target="_blank" style="color:#00e5b0;text-decoration:none;">dropnode</a> · OneHackers &nbsp;|&nbsp; Made for Cyber Carnival 2K26 | VIT-B</p>
-    <p style="margin-top:4px">Copyright © 2026, <a href="https://dropnode.onehackers.dev" target="_blank" style="color:#555;text-decoration:none;">dropnode</a>, All Rights Reserved</p>
+    <p>Generated by <a href="https://dropnode.up.railway.app/" target="_blank" style="color:#00e5b0;text-decoration:none;">dropnode</a> · OneHackers &nbsp;|&nbsp; Made for Cyber Carnival 2K26 | VIT-B</p>
+    <p style="margin-top:4px">Copyright © 2026, <a href="https://dropnode.up.railway.app/" target="_blank" style="color:#555;text-decoration:none;">dropnode</a>, All Rights Reserved</p>
   </div>
 </div>
 
@@ -391,7 +440,6 @@ def scan_file():
     #   - now unsafe  → delete uploads/ copy, schedule_delete on cache/ copy
     if not os.path.exists(cache_path) and os.path.exists(uploads_path):
         try:
-            import shutil
             shutil.copy2(uploads_path, cache_path)
             from_uploads = True
         except Exception as e:
@@ -517,13 +565,20 @@ def scan_file():
         analysis_data = {}
         for _ in range(30):
             time.sleep(10)
-            ar = requests.get(f'{VT_API_URL}/analyses/{analysis_id}',
-                              headers=headers, timeout=30)
-            analysis_data = ar.json()
-            if analysis_data['data']['attributes']['status'] == 'completed':
+            try:
+                ar = requests.get(f'{VT_API_URL}/analyses/{analysis_id}',
+                                  headers=headers, timeout=30)
+                analysis_data = ar.json()
+            except Exception:
+                continue   # transient network error — keep polling
+            status = analysis_data.get('data', {}).get('attributes', {}).get('status')
+            if status == 'completed':
                 break
 
-        attrs      = analysis_data['data']['attributes']
+        # Guard: if analysis never completed, return a clean timeout error
+        attrs = analysis_data.get('data', {}).get('attributes', {})
+        if attrs.get('status') != 'completed':
+            return jsonify({'error': 'Scan timed out — VirusTotal did not complete analysis in time. Please try again.'}), 504
         stats      = attrs.get('stats', {})
         results    = attrs.get('results', {})
         malicious  = stats.get('malicious', 0)
@@ -692,12 +747,15 @@ def download_file(filename):
     filename = secure_filename(filename)
     db  = get_db()
     row = db.execute(
-        'SELECT is_safe FROM scan_results WHERE filename = ? ORDER BY created_at DESC LIMIT 1',
+        'SELECT is_safe, file_deleted FROM scan_results WHERE filename = ? ORDER BY created_at DESC LIMIT 1',
         (filename,)
     ).fetchone()
 
     if not row or not row['is_safe']:
         return jsonify({'error': 'File not available for download'}), 403
+
+    if row['file_deleted']:
+        return jsonify({'error': 'file_deleted'}), 410
 
     # Safe files live in uploads/ after the immediate move on scan completion
     filepath = os.path.join(UPLOAD_FOLDER, filename)
@@ -734,5 +792,104 @@ def download_report(upload_id):
     )
 
 
+
+# ── SET API KEY (persisted to .api_key file on disk) ─────────────────────────
+
+@app.route('/set-api-key', methods=['POST'])
+def set_api_key():
+    global VIRUSTOTAL_API_KEY
+    data = request.json or {}
+    key  = (data.get('api_key') or '').strip()
+    if not key:
+        return jsonify({'error': 'No API key provided'}), 400
+    VIRUSTOTAL_API_KEY = key
+    # Persist to disk so it survives server restarts
+    try:
+        with open(_API_KEY_FILE, 'w') as f:
+            f.write(key)
+        os.chmod(_API_KEY_FILE, 0o600)  # owner-read-only; prevents world-readable API key
+    except OSError:
+        pass  # memory-only fallback if disk write fails
+    return jsonify({'success': True})
+
+
+# ── DELETE FILE ONLY (keep DB record, mark file_deleted=1) ───────────────────
+
+@app.route('/delete-file', methods=['POST'])
+def delete_file_only():
+    data     = request.json or {}
+    filename = secure_filename(data.get('filename', ''))
+    if not filename:
+        return jsonify({'error': 'No filename'}), 400
+
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    if os.path.exists(filepath):
+        try:
+            os.remove(filepath)
+        except OSError as e:
+            return jsonify({'error': str(e)}), 500
+
+    with sqlite3.connect(DB_PATH) as con:
+        con.execute('UPDATE scan_results SET file_deleted=1 WHERE filename=?', (filename,))
+        con.commit()
+
+    return jsonify({'success': True})
+
+
+# ── DELETE FILE + RESULT (wipe everything) ────────────────────────────────────
+
+@app.route('/delete-result', methods=['POST'])
+def delete_result():
+    data     = request.json or {}
+    filename = secure_filename(data.get('filename', ''))
+    if not filename:
+        return jsonify({'error': 'No filename'}), 400
+
+    for folder in [UPLOAD_FOLDER, CACHE_FOLDER]:
+        fp = os.path.join(folder, filename)
+        if os.path.exists(fp):
+            try: os.remove(fp)
+            except OSError: pass
+
+    with sqlite3.connect(DB_PATH) as con:
+        con.execute('DELETE FROM scan_results WHERE filename=?', (filename,))
+        con.commit()
+
+    return jsonify({'success': True})
+
+
+
+# ── CLEANUP CACHE (called by frontend on page unload via sendBeacon) ─────────
+
+@app.route('/cleanup-cache', methods=['POST'])
+def cleanup_cache():
+    """
+    Delete a specific file from cache/ when the user navigates away or
+    reloads mid-scan. The frontend calls this with sendBeacon on beforeunload.
+    Only removes files that are NOT already in _pending_deletions (those are
+    unsafe files on the 180s auto-delete timer and must not be touched).
+    """
+    data     = request.json or {}
+    filename = secure_filename(data.get('filename', ''))
+    if not filename:
+        return jsonify({'error': 'No filename'}), 400
+
+    cache_path = os.path.abspath(os.path.join(CACHE_FOLDER, filename))
+
+    # Safety: never delete a file already on the auto-delete timer
+    with _del_lock:
+        is_pending = cache_path in _pending_deletions
+    if is_pending:
+        return jsonify({'skipped': 'pending_deletion'}), 200
+
+    if os.path.exists(cache_path):
+        try:
+            os.remove(cache_path)
+        except OSError as e:
+            return jsonify({'error': str(e)}), 500
+
+    return jsonify({'success': True})
+
+
 if __name__ == '__main__':
-    app.run(debug=False, port=5000)
+    app.run(debug=True, port=5000)
