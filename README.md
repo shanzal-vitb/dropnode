@@ -94,7 +94,11 @@ pip install -r requirements.txt
 
 Get a free API key from https://www.virustotal.com/gui/my-apikey after registering.
 
-**Option A — Environment variable (recommended):**
+**Option A — In-browser via "Set API" modal (V1.1) [recommended]:**
+
+Start the app, then click **"Set API"** in the header nav. Enter your key in the popup — it is saved to `.api_key` (chmod 600) and persists across server restarts. No restart required.
+
+**Option B — Environment variable:**
 
 Linux / macOS:
 ```bash
@@ -110,10 +114,6 @@ Windows (PowerShell):
 ```powershell
 $env:VT_API_KEY="your_api_key_here"
 ```
-
-**Option B — In-browser via "Set API" modal (V1.1):**
-
-Start the app, then click **"Set API"** in the header nav. Enter your key in the popup — it is saved to `.api_key` (chmod 600) and persists across server restarts. No restart required.
 
 **Option C — Edit `app.py` directly:**
 
