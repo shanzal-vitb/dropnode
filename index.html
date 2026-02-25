@@ -1145,7 +1145,7 @@
             </div>
           </div>
           <p class="font-semibold text-base mb-1">Drag &amp; drop your file here</p>
-          <p class="text-sm mb-5" style="color:var(--muted);">or click to browse — up to 650 MB</p>
+          <p class="text-sm mb-5" style="color:var(--muted);">or click to browse — up to 32 MB</p>
           <button onclick="document.getElementById('file-input').click()" class="btn btn-outline">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round"
@@ -1689,7 +1689,7 @@
     dropZone.addEventListener('click', () => document.getElementById('file-input').click());
 
     function handleFile(file) {
-      if (file.size > 650 * 1024 * 1024) { showSnack({ type: 'error', message: '<strong>File too large</strong><br>Maximum upload size is 650 MB.', duration: 5000 }); return; }
+      if (file.size > 32 * 1024 * 1024) { showSnack({ type: 'error', message: '<strong>File too large</strong><br>Maximum upload size is 32 MB.', duration: 5000 }); return; }
       currentFile = file;
       uploadFile(file);
     }
