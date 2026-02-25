@@ -29,7 +29,7 @@ def _load_api_key() -> str:
                 return key
         except OSError:
             pass
-    return os.environ.get('VIRUSTOTAL_API_KEY', '66926d0a094182e22184a8f4c4a594158e12deacc68ee7a831164dfa6d7ad77d')
+    return os.environ.get('VIRUSTOTAL_API_KEY')
 
 VIRUSTOTAL_API_KEY = _load_api_key()
 VT_API_URL    = 'https://www.virustotal.com/api/v3'
