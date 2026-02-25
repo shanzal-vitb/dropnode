@@ -332,7 +332,7 @@ Scan results are stored in `dropnode.db` (SQLite). The `scan_results` table sche
 
 ## Demo Video
 
-[![Alt text for the thumbnail](https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/readme/landing.png)](https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/readme/Dropnode_V1.1_Demo.mp4)
+<video src="https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/readme/Dropnode_V1.1_Demo.mp4" controls width="100%"></video>
 
 ---
 
