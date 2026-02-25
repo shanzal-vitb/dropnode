@@ -233,7 +233,7 @@ Scan results are stored in `dropnode.db` (SQLite). The `scan_results` table sche
 
 | Constraint | Value |
 |------------|-------|
-| Maximum file size | 650 MB |
+| Maximum file size | 32 MB |
 | VirusTotal free tier rate limit | 4 req/min, 500/day |
 | Unsafe file auto-deletion | 180 seconds after first scan |
 | Large file scan time | Up to 5 minutes (VirusTotal queue) |
