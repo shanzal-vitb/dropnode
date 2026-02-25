@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DropNode — Secure File Portal</title>
+  <title>DropNode — Secure File Upload Portal</title>
   <!-- Favicon: inline SVG dropnode "d" mark in accent green -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a0a0a'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-family='Arial Black%2C sans-serif' font-weight='900' font-size='20' fill='%2300e5b0'%3Ed%3C/text%3E%3C/svg%3E" />
   <script src="https://cdn.tailwindcss.com"></script>
@@ -13,11 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Google+Sans+Flex:wght@300;400;500;600;700&display=swap"
     rel="stylesheet" />
   <!--
-    Custom fonts loaded via @font-face from /static/fonts/ below.
-    If hosting externally, replace src URLs:
-      SamsungSharpSans-Bold  → https://cdn.dropnode.onehackers.dev/fonts/SamsungSharpSans-Bold.otf
-      PPSupplySans-Ultralight → https://cdn.dropnode.onehackers.dev/fonts/PPSupplySans-Ultralight.otf
-      PPSupplySans-Regular    → https://cdn.dropnode.onehackers.dev/fonts/PPSupplySans-Regular.otf
+    Custom fonts loaded via jsDelivr CDN (GitHub repo: shanzal-vitb/dropnode-assets).
   -->
   <style>
     :root {
@@ -43,7 +39,7 @@
       --fs-xl:   clamp(1.1rem,  2.2vw,  1.5rem);
       --fs-2xl:  clamp(1.3rem,  3vw,    2rem);
       --fs-hero: clamp(1.8rem,  5.5vw,  3.75rem);
-      --fs-nav:  clamp(1rem,    2vw,    1.875rem);
+      --fs-nav:  clamp(1.2rem,  2vw,    1.875rem);
       --fs-footer-brand: clamp(1rem, 2.5vw, 2rem);
     }
 
@@ -55,19 +51,19 @@
 
     @font-face {
       font-family: 'SamsungSharpSans';
-      src: url('/static/fonts/SamsungSharpSans-Bold.otf') format('opentype');
+      src: url('https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/fonts/SamsungSharpSans-Bold.otf') format('opentype');
       font-weight: 700;
     }
 
     @font-face {
       font-family: 'PPSupplySans';
-      src: url('/static/fonts/PPSupplySans-Ultralight.otf') format('opentype');
+      src: url('https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/fonts/PPSupplySans-Ultralight.otf') format('opentype');
       font-weight: 200;
     }
 
     @font-face {
       font-family: 'PPSupplySans';
-      src: url('/static/fonts/PPSupplySans-Regular.otf') format('opentype');
+      src: url('https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/fonts/PPSupplySans-Regular.otf') format('opentype');
       font-weight: 400;
     }
 
@@ -380,7 +376,7 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 8px 18px;
+      padding: 8px 10px;
       border-radius: 8px;
       font-size: var(--fs-sm);
       font-weight: 500;
@@ -587,16 +583,17 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 12px;
+      padding: 3px 10px;
       border-radius: 999px;
-      font-size: var(--fs-xs);
+      font-size: clamp(0.55rem, 0.75vw, 0.65rem);
       font-weight: 500;
       border: 1px solid;
       transition: background 0.6s ease, border-color 0.6s ease, color 0.6s ease, opacity 0.4s ease;
     }
 
-    .status-pill.online  { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.25); color: #22c55e; }
-    .status-pill.offline { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); color: #ef4444; }
+    .status-pill.online   { background: rgba(34,197,94,0.08);  border-color: rgba(34,197,94,0.25);  color: #22c55e; }
+    .status-pill.offline  { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.25);  color: #ef4444; }
+    .status-pill.checking { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.25); color: #f59e0b; }
 
     .status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
       transition: background 0.6s ease, box-shadow 0.6s ease; }
@@ -607,7 +604,8 @@
       animation: pulse-dot 2s ease-in-out infinite;
     }
 
-    .status-pill.offline .status-dot { background: #ef4444; box-shadow: none; }
+    .status-pill.offline  .status-dot { background: #ef4444; box-shadow: none; animation: none; }
+    .status-pill.checking .status-dot { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; animation: pulse-dot 1s ease-in-out infinite; }
 
     @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
 
@@ -638,6 +636,8 @@
       nav .search-wrap { display: none !important; }
       #hamburger-btn { display: flex !important; }
       #hamburger-wrapper { display: block !important; }
+      /* Right column: collapse gap when links are hidden */
+      nav > div > div:last-child { gap: 0 !important; }
 
       .footer-wrapper { padding: 0 12px 20px; }
       footer { border-radius: 14px; }
@@ -658,6 +658,7 @@
 
       #scan-results-panel .flex.items-center.gap-3.p-6 {
         flex-wrap: wrap; gap: 8px; padding: 14px !important;
+        justify-content: flex-start;
       }
     }
 
@@ -677,7 +678,15 @@
       #state-uploaded .flex.items-center.gap-2.mt-6 { flex-wrap: wrap; gap: 8px; }
       .status-bar { flex-wrap: wrap; gap: 6px; }
       #scan-status-bar .ml-auto { width: 100%; justify-content: center; margin-top: 4px; }
+      /* Upload area button row: left-align when wrapping */
+      #state-uploaded .flex.items-center.gap-2.mt-6 > div.ml-auto {
+        margin-left: 0;
+        width: 100%;
+        justify-content: flex-start;
+      }
     }
+
+
 
     /* ---- SNACKBAR ---- */
     #snackbar-container {
@@ -773,6 +782,126 @@
       margin-top: 1px;
     }
     .snackbar-close:hover { opacity: 1; }
+
+    /* ── SETTINGS MODAL ── */
+    #settings-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.72);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    #settings-modal.open { opacity: 1; pointer-events: all; }
+
+    .settings-box {
+      background: #141414;
+      border: 1px solid var(--border-light);
+      border-radius: 18px;
+      width: 100%;
+      max-width: 420px;
+      padding: 28px 28px 24px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,229,176,0.06) inset;
+      transform: translateY(18px) scale(0.97);
+      transition: transform 0.3s cubic-bezier(.22,.68,0,1.2);
+    }
+    #settings-modal.open .settings-box { transform: translateY(0) scale(1); }
+
+    .settings-api-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      overflow: hidden;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .settings-api-input-wrap:focus-within {
+      border-color: var(--accent);
+      background: rgba(0,229,176,0.04);
+    }
+    .settings-api-input-wrap input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      padding: 9px 12px;
+      font-size: var(--fs-xs);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      outline: none;
+    }
+    .settings-api-input-wrap input::placeholder { color: var(--muted); }
+    .settings-api-btn {
+      flex-shrink: 0;
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      transition: color 0.15s;
+    }
+    .settings-api-btn:hover { color: var(--text); }
+    .settings-submit-btn {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: #000;
+      transition: filter 0.15s, transform 0.12s;
+      margin-left: 8px;
+    }
+    .settings-submit-btn:hover  { filter: brightness(1.12); }
+    .settings-submit-btn:active { transform: scale(0.94); }
+
+    /* ── DELETE CONFIRM POPUP (inline snackbar-style) ── */
+    #delete-confirm-popup {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      z-index: 1100;
+      background: #1a0a0a;
+      border: 1px solid rgba(239,68,68,0.35);
+      border-radius: 14px;
+      padding: 16px 20px;
+      width: min(560px, calc(100vw - 32px));
+      box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.28s ease, transform 0.28s cubic-bezier(.22,.68,0,1.2);
+    }
+    #delete-confirm-popup.open {
+      opacity: 1;
+      pointer-events: all;
+      transform: translateX(-50%) translateY(0);
+    }
+    @media (max-width: 480px) {
+      #delete-confirm-popup {
+        left: 16px;
+        right: 16px;
+        transform: translateY(20px);
+        width: auto;
+      }
+      #delete-confirm-popup.open { transform: translateY(0); }
+    }
   </style>
 </head>
 
@@ -781,16 +910,90 @@
   <!-- SNACKBAR CONTAINER -->
   <div id="snackbar-container"></div>
 
+  <!-- SETTINGS MODAL -->
+  <div id="settings-modal" onclick="closeSettingsOnBackdrop(event)">
+    <div class="settings-box">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="font-bold text-base">Set API</h2>
+          <p class="text-xs mt-0.5" style="color:var(--muted);">Add your VirusTotal V3 API Key</p>
+        </div>
+        <button onclick="closeSettings()" style="width:28px;height:28px;border-radius:7px;border:1px solid var(--border-light);background:rgba(255,255,255,0.04);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.15s,color 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='#fff'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='var(--muted)'">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+        </button>
+      </div>
+      <div class="flex items-center gap-0">
+        <div class="settings-api-input-wrap" style="flex:1;">
+          <input type="password" id="settings-api-key-input" placeholder="API Key" autocomplete="off" onkeydown="if(event.key==='Enter')submitApiKey()" />
+          <button class="settings-api-btn" id="settings-eye-btn" onclick="toggleApiKeyVisibility()" title="Toggle visibility">
+            <svg id="settings-eye-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+        <button class="settings-submit-btn" onclick="submitApiKey()" title="Save API Key">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 13l4 4L19 7"/>
+          </svg>
+        </button>
+      </div>
+      <p class="text-xs mt-3" style="color:var(--muted);line-height:1.5;">Your key is saved to disk and persists across server restarts. It will be used for all subsequent scans.</p>
+    </div>
+  </div>
+
+  <!-- DELETE CONFIRM POPUP -->
+  <div id="delete-confirm-popup">
+    <p class="text-sm font-semibold mb-1" style="color:#f87171;">Delete Options</p>
+    <!-- SAFE mode: shown when file is safe (both options) -->
+    <div id="delete-popup-safe">
+      <p class="text-xs mb-1" style="color:var(--muted);line-height:1.5;">Choose what to delete. This cannot be undone.</p>
+      <!-- Shown only after file-only deletion has already happened -->
+      <p id="delete-file-deleted-note" class="text-xs mb-3 flex items-center gap-1.5" style="display:none;color:#f59e0b;line-height:1.5;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01"/></svg>
+        The file has been deleted by the user.
+      </p>
+      <div class="mb-3"></div>
+      <div class="flex gap-2 flex-wrap">
+        <button id="btn-delete-file-only" onclick="confirmDeleteFile()" class="btn text-xs" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#f87171;">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          Just the File
+        </button>
+        <button id="btn-delete-result-safe" onclick="confirmDeleteResult()" class="btn text-xs" style="background:rgba(239,68,68,0.22);border:1px solid rgba(239,68,68,0.5);color:#fca5a5;">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span id="btn-delete-result-safe-label">File &amp; Result</span>
+        </button>
+        <button onclick="closeDeletePopup()" class="btn btn-ghost text-xs">Cancel</button>
+      </div>
+    </div>
+    <!-- UNSAFE mode: shown when file is unsafe (result-only + auto-delete note) -->
+    <div id="delete-popup-unsafe" style="display:none;">
+      <p class="text-xs mb-1" style="color:var(--muted);line-height:1.5;">Choose what to delete. This cannot be undone.</p>
+      <p id="delete-auto-delete-note" class="text-xs mb-4 flex items-center gap-1.5" style="color:#f59e0b;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6h4.5"/></svg>
+        <span id="delete-auto-delete-note-text">File will be deleted in 3 mins automatically.</span>
+      </p>
+      <div class="flex gap-2 flex-wrap">
+        <button onclick="confirmDeleteResult()" class="btn text-xs" style="background:rgba(239,68,68,0.22);border:1px solid rgba(239,68,68,0.5);color:#fca5a5;">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Delete Result
+        </button>
+        <button onclick="closeDeletePopup()" class="btn btn-ghost text-xs">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- NAV -->
   <div class="nav-wrapper">
     <nav>
-      <div class="px-7 py-4 flex items-center gap-4 justify-between">
-        <a href="#" class="flex items-center gap-3 flex-shrink-0 hover:opacity-80 transition-opacity">
+      <!-- 3-column grid: logo | centred search | links — keeps search perfectly centred -->
+      <div class="px-7 py-4" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;">
+        <!-- Left: logo -->
+        <a href="#" class="flex items-center gap-3 flex-shrink-0 hover:opacity-80 transition-opacity" style="justify-self:start;">
           <span class="nav-logo">dropnode</span>
         </a>
 
-        <!-- Search bar -->
-        <div class="search-wrap">
+        <!-- Centre: search bar (truly centred by grid) -->
+        <div class="search-wrap" style="max-width:260px;width:260px;">
           <svg class="search-icon w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round"
               d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
@@ -798,11 +1001,14 @@
           <input type="text" id="search-input" placeholder="Search by Drop ID..." autocomplete="off" />
         </div>
 
-        <div class="flex items-center gap-4 text-sm flex-shrink-0" style="color: var(--muted);">
-          <a href="#upload" class="hover:text-white transition-colors">Upload</a>
-          <a href="#results" class="hover:text-white transition-colors">Results</a>
-          <a href="#about" class="hover:text-white transition-colors">About</a>
-        </div>
+        <!-- Right: nav links + hamburger -->
+        <div style="justify-self:end;display:flex;align-items:center;gap:16px;">
+          <div class="flex items-center gap-4 text-sm flex-shrink-0" style="color: var(--muted);">
+            <a href="#upload" class="hover:text-white transition-colors">Upload</a>
+            <a href="#results" class="hover:text-white transition-colors">Results</a>
+            <a href="#about" class="hover:text-white transition-colors">About</a>
+            <a href="#" onclick="openSettings(event)" class="hover:text-white transition-colors">Set API</a>
+          </div>
 
         <!-- Hamburger (mobile only) -->
         <div style="position:relative;flex-shrink:0;display:none;" id="hamburger-wrapper">
@@ -825,9 +1031,11 @@
             <a href="#upload" onclick="toggleMobileMenu()">Upload</a>
             <a href="#results" onclick="toggleMobileMenu()">Results</a>
             <a href="#about" onclick="toggleMobileMenu()">About</a>
+            <a href="#" onclick="toggleMobileMenu();openSettings(event)">Set API</a>
           </div>
-        </div>
-      </div>
+        </div><!-- /hamburger-wrapper -->
+        </div><!-- /right column -->
+      </div><!-- /grid -->
     </nav>
   </div>
 
@@ -847,6 +1055,52 @@
     </div>
   </div>
 
+  <!-- DEMO WARNING BANNER -->
+  <div id="demo-warning-banner-wrap" style="
+    position: sticky;
+    top: 74px;
+    z-index: 49;
+    padding: 8px 20px 0;
+    pointer-events: none;
+  ">
+    <div id="demo-warning-banner" style="
+      pointer-events: all;
+      background: linear-gradient(90deg, #1a1000 0%, #1f1400 100%);
+      border: 1px solid rgba(245,158,11,0.28);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 16px rgba(245,158,11,0.06);
+      padding: 10px 14px 10px 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    ">
+      <!-- Amber left accent bar -->
+      <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,#f59e0b,#d97706);border-radius:12px 0 0 12px;"></div>
+      <!-- Icon -->
+      <svg style="flex-shrink:0;margin-top:1px;color:#f59e0b;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <!-- Text -->
+      <p style="flex:1;font-size:11.5px;line-height:1.65;color:#fbbf24;margin:0;">
+        <strong style="color:#f59e0b;">This is a Demo Website!</strong>
+        &nbsp;We strongly recommend you <strong>not</strong> to upload any of your sensitive files here.
+        Although we have added a <em>"Delete File &amp; its Result"</em> option for this specific webapp build,
+        your files may still be publicly exposed if uploaded here.
+        Again, <strong>DropNode is a Self-Hosted webapp.</strong>
+        &nbsp;<span style="color:#f59e0b;">Tnx for understanding :)</span>
+      </p>
+      <!-- Dismiss button -->
+      <button onclick="document.getElementById('demo-warning-banner-wrap').style.display='none'" title="Dismiss"
+        style="flex-shrink:0;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);
+               color:#f59e0b;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;
+               transition:background 0.15s;line-height:1;margin-top:1px;"
+        onmouseover="this.style.background='rgba(245,158,11,0.22)'"
+        onmouseout="this.style.background='rgba(245,158,11,0.1)'">✕</button>
+    </div>
+  </div>
+
   <!-- HERO -->
   <section class="main-desc relative py-20 px-6 text-center" style="overflow:hidden;">
     <div class="hero-bg"></div>
@@ -858,7 +1112,7 @@
         Dropped · Scanned · Verified
       </div>
       <h1 class="head-txt font-bold tracking-tight mb-10">The <span style="color:var(--accent);">drop</span> you trust. <br>
-        The <span style="color:var(--accent);">node</span> that protects
+        The <span style="color:var(--accent);">node</span> that protects.
       </h1>
       <p class="head-para">
         DropNode is your system's bouncer for file uploads. Every file that tries to enter gets checked, scanned, and
@@ -901,7 +1155,7 @@
           </button>
         </div>
         <p class="text-xs font-bold mb-1 flex items-center gap-1.5" style="color: var(--accent);">
-          <img src="/static/assets/save.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
+          <img src="https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/assets/save.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
           Save the Drop ID to find the scan results later.
         </p>
         <p class="text-xs" style="color: var(--muted);">Files are scanned using VirusTotal API before being stored.
@@ -1167,14 +1421,23 @@
           </svg>
           Download File Report [HTML]
         </button>
-        <button id="btn-rescan" onclick="reScan()" class="btn btn-outline text-xs">
+        <div id="btn-rescan-wrap" style="position:relative;display:inline-block;">
+          <button id="btn-rescan" onclick="reScan()" class="btn btn-outline text-xs">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+            Re-Scan File
+          </button>
+        </div>
+        <button id="btn-delete-file" onclick="openDeletePopup()" class="btn btn-outline text-xs" style="color:#f87171;border-color:rgba(239,68,68,0.35);" onmouseover="this.style.background='rgba(239,68,68,0.08)'" onmouseout="this.style.background=''">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round"
-              d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
           </svg>
-          Re-Scan File
+          Delete
         </button>
-        <button id="btn-download-file" onclick="downloadFile()" class="btn btn-primary text-xs ml-auto">
+        <button id="btn-download-file" onclick="downloadFile()" class="btn btn-primary text-xs">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round"
               d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -1200,35 +1463,35 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
         <div class="p-4 rounded-xl" style="background:#ffffff05;border:1px solid var(--border);">
           <p class="font-semibold text-sm mb-1 flex items-center gap-1.5">
-            <img src="/static/assets/secure.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
+            <img src="https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/assets/secure.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
             Secure File Uploads
           </p>
           <p class="text-xs" style="color:var(--muted);">Encrypted transfer protocols ensure data protection during upload.</p>
         </div>
         <div class="p-4 rounded-xl" style="background:#ffffff05;border:1px solid var(--border);">
           <p class="font-semibold text-sm mb-1 flex items-center gap-1.5">
-            <img src="/static/assets/validation.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
+            <img src="https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/assets/validation.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
             Validation &amp; Scanning Layer
           </p>
           <p class="text-xs" style="color:var(--muted);">Files are automatically verified and checked before being accepted.</p>
         </div>
         <div class="p-4 rounded-xl" style="background:#ffffff05;border:1px solid var(--border);">
           <p class="font-semibold text-sm mb-1 flex items-center gap-1.5">
-            <img src="/static/assets/access.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
+            <img src="https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/assets/access.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
             Access Control &amp; Permissions
           </p>
           <p class="text-xs" style="color:var(--muted);">Role-based access to ensure only authorized users can upload or retrieve files.</p>
         </div>
         <div class="p-4 rounded-xl" style="background:#ffffff05;border:1px solid var(--border);">
           <p class="font-semibold text-sm mb-1 flex items-center gap-1.5">
-            <img src="/static/assets/clean.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
+            <img src="https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/assets/clean.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
             Clean &amp; Minimal UI
           </p>
           <p class="text-xs" style="color:var(--muted);">A fast, intuitive interface designed for frictionless user interaction.</p>
         </div>
         <div class="p-4 rounded-xl sm:col-span-2" style="background:#ffffff05;border:1px solid var(--border);">
           <p class="font-semibold text-sm mb-1 flex items-center gap-1.5">
-            <img src="/static/assets/scalable.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
+            <img src="https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/assets/scalable.svg" style="width:18px;height:18px;display:inline-block;vertical-align:middle;" />
             Scalable Architecture
           </p>
           <p class="text-xs" style="color:var(--muted);">Built to handle increasing upload volumes without compromising performance.</p>
@@ -1263,7 +1526,7 @@
                   <p class="text-sm font-semibold">Shanzal Firoz</p>
                   <p class="text-xs" style="color:var(--muted);text-align:left !important;">Lead</p>
                 </div>
-                <a href="https://github.com/shanzal-vitb/" target="_blank" class="text-gray-500 hover:text-white transition-colors">
+                <a href="https://github.com/shanzal-vitb" target="_blank" class="text-gray-500 hover:text-white transition-colors">
                   <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
                   </svg>
@@ -1290,10 +1553,10 @@
 
           <!-- Center: University -->
           <div class="text-center my-2">
-            <img src="/static/assets/VIT_Bhopal.svg" alt="VIT Bhopal" class="mx-auto"
+            <img src="https://cdn.jsdelivr.net/gh/shanzal-vitb/dropnode@master/static/assets/VIT_Bhopal.svg" alt="VIT Bhopal" class="mx-auto"
               style="width:6rem;height:6rem;object-fit:contain;" />
             <p class="text-xs mt-1" style="color:var(--muted);">Made for Cyber Carnival 2K26 | VIT-B</p>
-            <div id="system-status-pill" class="status-pill offline mt-2">
+            <div id="system-status-pill" class="status-pill checking mt-2">
               <span class="status-dot"></span>
               <span id="system-status-text">Checking...</span>
             </div>
@@ -1309,7 +1572,7 @@
               </span>
             </a>
             <div class="flex items-center gap-2">
-              <a href="https://github.com/shanzal-vitb/dropnode/" target="_blank"
+              <a href="https://github.com/dropnode" target="_blank"
                 class="flex items-center gap-1.5 text-xs hover:text-white transition-colors"
                 style="color:var(--muted);">
                 <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
@@ -1317,7 +1580,7 @@
                 </svg>
                 GitHub
               </a>
-              <span class="tag-badge">Build: Beta - V1.0</span>
+              <span class="tag-badge">Build: Beta, V1.1 - 250226_demo</span>
             </div>
             <p style="color:#444;font-size:var(--fs-xs);text-align:end;">Copyright © 2026, dropnode, All Rights Reserved</p>
           </div>
@@ -1664,6 +1927,9 @@
               // Update regardless of whether a live or search result is currently shown
               _setWarningPillDeleted();
 
+              // Also update the delete confirmation popup note if it's showing the unsafe mode
+              _updateDeletePopupNote();
+
             }, 180_000);
           }
 
@@ -1764,6 +2030,22 @@
         w.classList.add('fade-in-content');
         w.style.opacity = '1';
         setTimeout(() => w.classList.remove('fade-in-content'), 400);
+      }, 320);
+    }
+
+    // Update delete popup's auto-delete note text when the 3-min timer fires
+    function _updateDeletePopupNote() {
+      const noteEl = document.getElementById('delete-auto-delete-note-text');
+      const noteWrap = document.getElementById('delete-auto-delete-note');
+      if (!noteEl || !noteWrap) return;
+      noteEl.style.transition = 'opacity 0.3s ease';
+      noteEl.style.opacity = '0';
+      setTimeout(() => {
+        // Change icon to trash (deleted) and update text
+        noteWrap.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg><span>File has been deleted automatically.</span>`;
+        noteWrap.style.color = 'var(--muted)';
+        noteWrap.style.opacity = '0';
+        requestAnimationFrame(() => { noteWrap.style.transition = 'opacity 0.3s ease'; noteWrap.style.opacity = '1'; });
       }, 320);
     }
 
@@ -1920,18 +2202,34 @@
       }
 
       // Button states — NO timer logic here, timer is owned by scanFile()
-      const dlBtn     = document.getElementById('btn-download-file');
-      const reScanBtn = document.getElementById('btn-rescan');
+      const dlBtn      = document.getElementById('btn-download-file');
+      const reScanBtn  = document.getElementById('btn-rescan');
+      const reScanWrap = document.getElementById('btn-rescan-wrap');
 
       if (data.is_safe) {
-        dlBtn.classList.remove('btn-disabled');
-        reScanBtn.classList.remove('btn-disabled');
+        // Disable download if file was manually deleted (file_deleted flag)
+        if (data.file_deleted) {
+          dlBtn.classList.add('btn-disabled');
+          // File is gone — disable re-scan and show tooltip
+          reScanBtn.classList.add('btn-disabled');
+          reScanBtn.onclick = null;
+          if (reScanWrap) reScanWrap.setAttribute('data-file-deleted', '');
+        } else {
+          dlBtn.classList.remove('btn-disabled');
+          // File exists — re-scan is available
+          reScanBtn.classList.remove('btn-disabled');
+          reScanBtn.onclick = reScan;
+          if (reScanWrap) reScanWrap.removeAttribute('data-file-deleted');
+        }
       } else {
         dlBtn.classList.add('btn-disabled');
+        // Unsafe files: re-scan disabled only after auto-delete fires
+        if (reScanWrap) reScanWrap.removeAttribute('data-file-deleted');
         if (data._deleted) {
           reScanBtn.classList.add('btn-disabled');
         } else {
           reScanBtn.classList.remove('btn-disabled');
+          reScanBtn.onclick = reScan;
         }
       }
 
@@ -2089,9 +2387,12 @@
     }
 
     function downloadFile() {
-      // For a searched result currentFilename may be null — fall back to scanResult.filename
-      const fname = currentFilename || (scanResult?.is_safe ? scanResult.filename : null);
-      if (!fname || !scanResult?.is_safe) return;
+      // For searched results, always use scanResult.filename — never currentFilename
+      // (currentFilename belongs to the live upload session, not the searched record)
+      const fname = scanResult?._fromSearch
+        ? (scanResult.is_safe ? scanResult.filename : null)
+        : (currentFilename || (scanResult?.is_safe ? scanResult.filename : null));
+      if (!fname || !scanResult?.is_safe || scanResult?.file_deleted) return;
       const url = '/download/' + encodeURIComponent(fname);
       fetch(url, { method: 'GET' })
         .then(r => {
@@ -2099,7 +2400,7 @@
             window.location.href = url;
           } else {
             r.json().then(body => {
-              if (body.error === 'file_not_found') {
+              if (body.error === 'file_not_found' || body.error === 'file_deleted') {
                 showSnack({ type: 'error', message: '<strong>File not found</strong><br>The uploaded file could not be located on the server.', duration: 5000 });
               } else {
                 showSnack({ type: 'error', message: `<strong>Download failed</strong><br>${body.error || 'Unknown error'}`, duration: 5000 });
@@ -2133,6 +2434,17 @@
       if (!q) { closeSearchModal(); return; }
       searchTimer = setTimeout(() => doSearch(q), 350);
     });
+
+    // F5 fix: wire mobile search input with the same debounced handler
+    const searchInputMobile = document.getElementById('search-input-mobile');
+    if (searchInputMobile) {
+      searchInputMobile.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        const q = searchInputMobile.value.trim();
+        if (!q) { closeSearchModal(); return; }
+        searchTimer = setTimeout(() => doSearch(q), 350);
+      });
+    }
 
     function doSearch(query) {
       fetch('/search?q=' + encodeURIComponent(query))
@@ -2230,31 +2542,266 @@
     });
 
     // ---- SYSTEM STATUS CHECK ----
+    // _lastStatusState tracks the last *resolved* state so _setPillState can short-circuit.
+    // "Checking..." (yellow) is only shown as the initial HTML state on first page load.
+    // After that, polls only ever switch between "online" (green) and "offline" (red).
+    // No intermediate "Checking" flash on every timer tick — not when online, not when offline.
+    let _lastStatusState = null;
+
+    function _setPillState(state, text) {
+      const pill = document.getElementById('system-status-pill');
+      if (pill.classList.contains(state)) return; // already correct — do nothing
+      pill.style.opacity = '0';
+      setTimeout(() => {
+        pill.className = `status-pill ${state} mt-2`;
+        document.getElementById('system-status-text').textContent = text;
+        pill.style.opacity = '1';
+      }, 300);
+    }
+
     function checkSystemStatus() {
+      // No pre-fetch state change — just silently poll and update only when the result changes
       fetch('/search?q=__ping__')
         .then(() => {
-          const pill = document.getElementById('system-status-pill');
-          if (pill.classList.contains('online')) return; // already correct, no flash
-          pill.style.opacity = '0';
-          setTimeout(() => {
-            pill.className = 'status-pill online mt-2';
-            document.getElementById('system-status-text').textContent = 'All Systems Operational';
-            pill.style.opacity = '1';
-          }, 300);
+          _lastStatusState = 'online';
+          _setPillState('online', 'All Systems Operational');
         })
         .catch(() => {
-          const pill = document.getElementById('system-status-pill');
-          if (pill.classList.contains('offline')) return;
-          pill.style.opacity = '0';
-          setTimeout(() => {
-            pill.className = 'status-pill offline mt-2';
-            document.getElementById('system-status-text').textContent = 'All Systems Offline';
-            pill.style.opacity = '1';
-          }, 300);
+          _lastStatusState = 'offline';
+          _setPillState('offline', 'All Systems Offline');
         });
     }
     checkSystemStatus();
     setInterval(checkSystemStatus, 10000);
+
+    // ── SETTINGS ─────────────────────────────────────────────────────────────
+    function openSettings(e) {
+      if (e) e.preventDefault();
+      document.getElementById('settings-modal').classList.add('open');
+      setTimeout(() => document.getElementById('settings-api-key-input').focus(), 120);
+    }
+
+    function closeSettings() {
+      document.getElementById('settings-modal').classList.remove('open');
+    }
+
+    function closeSettingsOnBackdrop(e) {
+      if (e.target === document.getElementById('settings-modal')) closeSettings();
+    }
+
+    function toggleApiKeyVisibility() {
+      const inp  = document.getElementById('settings-api-key-input');
+      const icon = document.getElementById('settings-eye-icon');
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      icon.innerHTML = show
+        ? `<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`
+        : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+    }
+
+    function submitApiKey() {
+      const key = document.getElementById('settings-api-key-input').value.trim();
+      if (!key) return;
+      fetch('/set-api-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: key })
+      })
+      .then(async r => {
+        const ct = r.headers.get('content-type') || '';
+        const d  = ct.includes('application/json') ? await r.json() : { success: r.ok };
+        closeSettings();
+        document.getElementById('settings-api-key-input').value = '';
+        if (d.success) {
+          showSnack({ type: 'success', message: '<strong>API key has been saved &amp; Applied.</strong><br>All subsequent scans will use your key.', duration: 5000 });
+        } else {
+          showSnack({ type: 'error', message: `<strong>Failed to save key</strong><br>${d.error || 'Server error'}`, duration: 5000 });
+        }
+      })
+      .catch(() => showSnack({ type: 'error', message: '<strong>Failed to save key</strong><br>Could not reach the server.', duration: 5000 }));
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        closeSettings();
+        closeDeletePopup();
+      }
+    });
+
+    // ── DELETE POPUP ──────────────────────────────────────────────────────────
+    function openDeletePopup() {
+      // For searched results always use scanResult.filename;
+      // currentFilename belongs to the live upload session only.
+      const fname = scanResult?._fromSearch
+        ? scanResult.filename
+        : (currentFilename || scanResult?.filename);
+      if (!fname) return;
+
+      // Show appropriate content based on whether scan result is safe or unsafe
+      const isSafe = scanResult?.is_safe !== false;
+      document.getElementById('delete-popup-safe').style.display   = isSafe ? '' : 'none';
+      document.getElementById('delete-popup-unsafe').style.display = isSafe ? 'none' : '';
+
+      // For safe files: if the file was already manually deleted, pre-disable "Just the File" button
+      if (isSafe) {
+        const fileAlreadyGone    = scanResult?.file_deleted === true;
+        const delFileOnlyBtn     = document.getElementById('btn-delete-file-only');
+        const fileDeletedNote    = document.getElementById('delete-file-deleted-note');
+        const delResultBtn       = document.getElementById('btn-delete-result-safe');
+        const delResultBtnLabel  = document.getElementById('btn-delete-result-safe-label');
+        const spacer             = delResultBtn?.previousElementSibling; // the mb-3 spacer div
+
+        if (delFileOnlyBtn) {
+          if (fileAlreadyGone) {
+            // Disable "Just the File"
+            delFileOnlyBtn.classList.add('btn-disabled');
+            delFileOnlyBtn.onclick = null;
+            // Show "file has been deleted" note
+            if (fileDeletedNote) fileDeletedNote.style.display = 'flex';
+            // Change button label to "Result Only"
+            if (delResultBtnLabel) delResultBtnLabel.innerHTML = 'Result Only';
+          } else {
+            // Restore everything to default state
+            delFileOnlyBtn.classList.remove('btn-disabled');
+            delFileOnlyBtn.onclick = confirmDeleteFile;
+            if (fileDeletedNote) fileDeletedNote.style.display = 'none';
+            if (delResultBtnLabel) delResultBtnLabel.innerHTML = 'File &amp; Result';
+          }
+        }
+      }
+
+      // If file is already deleted (timer fired before popup opened), show "has been deleted" note
+      if (!isSafe) {
+        const alreadyDeleted = scanResult?._deleted === true && deleteTimer === null;
+        const noteWrap = document.getElementById('delete-auto-delete-note');
+        if (noteWrap) {
+          if (alreadyDeleted) {
+            noteWrap.style.color = 'var(--muted)';
+            noteWrap.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg><span>File has been deleted automatically.</span>`;
+          } else {
+            noteWrap.style.color = '#f59e0b';
+            noteWrap.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6h4.5"/></svg><span id="delete-auto-delete-note-text">File will be deleted in 3 mins automatically.</span>`;
+          }
+        }
+      }
+
+      document.getElementById('delete-confirm-popup').classList.add('open');
+    }
+
+    function closeDeletePopup() {
+      document.getElementById('delete-confirm-popup').classList.remove('open');
+    }
+
+    // Auto-close delete popup when clicking anything outside it
+    document.addEventListener('click', function(e) {
+      const popup = document.getElementById('delete-confirm-popup');
+      if (popup.classList.contains('open') && !popup.contains(e.target)) {
+        closeDeletePopup();
+      }
+    }, true); // capture phase so it fires before onclick handlers on other buttons
+
+    function confirmDeleteFile() {
+      // For searched results always use scanResult.filename;
+      // currentFilename belongs to the live upload session only.
+      const fname = scanResult?._fromSearch
+        ? scanResult.filename
+        : (currentFilename || scanResult?.filename);
+      if (!fname) return;
+      closeDeletePopup();
+      fetch('/delete-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: fname })
+      })
+      .then(async r => {
+        const ct = r.headers.get('content-type') || '';
+        const d  = ct.includes('application/json') ? await r.json() : { success: r.ok };
+        if (d.success) {
+          const dlBtn = document.getElementById('btn-download-file');
+          if (dlBtn) dlBtn.classList.add('btn-disabled');
+          // Disable "Just the File" button permanently — file is gone, re-clicking must not loop
+          const delFileOnlyBtn = document.getElementById('btn-delete-file-only');
+          if (delFileOnlyBtn) {
+            delFileOnlyBtn.classList.add('btn-disabled');
+            delFileOnlyBtn.onclick = null;
+          }
+          // Disable Re-Scan button and activate tooltip — file no longer on disk
+          const reScanBtn  = document.getElementById('btn-rescan');
+          const reScanWrap = document.getElementById('btn-rescan-wrap');
+          if (reScanBtn)  { reScanBtn.classList.add('btn-disabled'); reScanBtn.onclick = null; }
+          if (reScanWrap) reScanWrap.setAttribute('data-file-deleted', '');
+          if (scanResult) scanResult.file_deleted = true;
+          if (liveScanResult && liveScanResult.filename === fname) liveScanResult.file_deleted = true;
+          showSnack({ type: 'success', message: '<strong>File deleted.</strong><br>The scan result is preserved. Download is now disabled.', duration: 5000 });
+        } else {
+          showSnack({ type: 'error', message: `<strong>Delete failed</strong><br>${d.error || 'Server error'}`, duration: 5000 });
+        }
+      })
+      .catch(() => showSnack({ type: 'error', message: '<strong>Delete failed</strong><br>Could not reach the server.', duration: 5000 }));
+    }
+
+    function confirmDeleteResult() {
+      // For searched results always use scanResult.filename;
+      // currentFilename belongs to the live upload session only.
+      const fname = scanResult?._fromSearch
+        ? scanResult.filename
+        : (currentFilename || scanResult?.filename);
+      if (!fname) return;
+      closeDeletePopup();
+      fetch('/delete-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: fname })
+      })
+      .then(async r => {
+        const ct = r.headers.get('content-type') || '';
+        const d  = ct.includes('application/json') ? await r.json() : { success: r.ok };
+        if (d.success) {
+          showSnack({ type: 'success', message: '<strong>File &amp; result deleted.</strong><br>The scan record has been removed.', duration: 5000 });
+          if (scanResult && !scanResult._fromSearch) {
+            resetAll();
+          } else {
+            closeSearchResult();
+          }
+        } else {
+          showSnack({ type: 'error', message: `<strong>Delete failed</strong><br>${d.error || 'Server error'}`, duration: 5000 });
+        }
+      })
+      .catch(() => showSnack({ type: 'error', message: '<strong>Delete failed</strong><br>Could not reach the server.', duration: 5000 }));
+    }
+
+    // ── RESCAN DISABLED SNACKBAR ──────────────────────────────────────────────
+    // btn-disabled has pointer-events:none so clicks pass through to the wrapper.
+    // Fire a snackbar only when the button is disabled due to file-only deletion.
+    document.getElementById('btn-rescan-wrap')?.addEventListener('click', () => {
+      const wrap = document.getElementById('btn-rescan-wrap');
+      if (wrap?.hasAttribute('data-file-deleted')) {
+        showSnack({
+          type: 'warn',
+          message: '<strong>File has been deleted.</strong><br>Re-upload the file to re-scan it.',
+          duration: 5000
+        });
+      }
+    });
+
+    // ── CACHE CLEANUP ON PAGE UNLOAD ──────────────────────────────────────────
+    // When the user reloads or navigates away mid-scan, send the in-progress
+    // filename to the backend so it can delete the orphaned cache file.
+    // Uses sendBeacon so the request survives page unload reliably.
+    // Only fires if there is a currentFilename and no scan result yet
+    // (meaning the file was uploaded but scan never completed on this session).
+    window.addEventListener('beforeunload', () => {
+      // If a scan completed (liveScanResult exists), the backend already handled
+      // file disposition (moved to uploads/ or scheduled deletion) — nothing to clean up.
+      // If the scan is still running (liveScanResult is null) and we have a filename,
+      // the file is sitting in cache/ as an orphan — clean it up.
+      if (currentFilename && !liveScanResult) {
+        navigator.sendBeacon(
+          '/cleanup-cache',
+          JSON.stringify({ filename: currentFilename })
+        );
+      }
+    });
   </script>
 </body>
 </html>
